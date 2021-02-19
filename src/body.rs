@@ -1,3 +1,4 @@
+#[derive(PartialEq, PartialOrd)]
 pub struct Body {
     pub m: f64,
     pub x: f64,
