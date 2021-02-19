@@ -7,6 +7,7 @@ use crate::math_utils::leapfrog;
 use crate::math_utils::get_dt;
 use crate::math_utils::calc_direct_force;
 use crate::io::read_csv;
+use crate::io::write_file;
 
 
 fn main() {
@@ -30,5 +31,6 @@ fn main() {
 
         //snprintf(filename, sizeof(filename), "../output/out_%05d.bin", step);
         //write_file(&mut bodies, filename, dt, t);
+        write_file(&format!("output/out{}.dat", step), &bodies);
     }
 }
