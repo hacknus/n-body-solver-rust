@@ -23,10 +23,10 @@ fn main() {
     calc_direct_force(&mut bodies);
 
     for step in 1..steps {
-        dt = get_dt(&mut bodies);
+        dt = get_dt(&bodies);
         t += dt;
         leapfrog(&mut bodies, dt);
-        println!("calculating step {}", step);
+        println!("calculating step {} at time t+{:.5}", step, t);
         write_file(&format!("output/out{:0>5}.dat", step), &bodies);
     }
 }

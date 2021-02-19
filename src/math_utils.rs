@@ -50,7 +50,7 @@ pub fn leapfrog(bodies: &mut Vec<Body>, dt: f64) {
     }
 }
 
-pub fn get_dt(bodies: &mut Vec<Body>) -> f64 {
+pub fn get_dt(bodies: & Vec<Body>) -> f64 {
     let n_p: usize = bodies.len();
     let mut dt: Vec<f64> = vec![0.0; n_p];
     let mut index: usize = 0;
