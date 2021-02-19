@@ -26,11 +26,7 @@ fn main() {
         dt = get_dt(&mut bodies);
         t += dt;
         leapfrog(&mut bodies, dt);
-
-        println!("body 1: x, y is {:.4}/{:.4}", bodies[0].x, bodies[0].y);
-
-        //snprintf(filename, sizeof(filename), "../output/out_%05d.bin", step);
-        //write_file(&mut bodies, filename, dt, t);
+        println!("calculating step {:}", step);
         write_file(&format!("output/out{}.dat", step), &bodies);
     }
 }

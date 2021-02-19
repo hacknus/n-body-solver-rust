@@ -69,6 +69,6 @@ pub fn get_dt(bodies: &mut Vec<Body>) -> f64 {
         index += 1;
     }
     min_dt = dt.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-    println!("min_dt is {:.32}", min_dt);
+    // println!("min_dt is {:.32}", min_dt);
     return min_dt;
 }
