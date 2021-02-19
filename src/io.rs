@@ -3,6 +3,25 @@ mod body;
 
 use crate::body::Body;
 use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
+
+pub fn write_file(path: &str, bodies: &Vec<Body>) -> std::io::Result<()> {
+    let mut file = File::create(path)?;
+    // Write a slice of bytes to the file
+    for i in 0..bodies.len() {
+        file.write_all(&bodies[i].x.to_be_bytes());
+        file.write_all(&bodies[i].y.to_be_bytes());
+        file.write_all(&bodies[i].z.to_be_bytes());
+        file.write_all(&bodies[i].vx.to_be_bytes());
+        file.write_all(&bodies[i].vy.to_be_bytes());
+        file.write_all(&bodies[i].vz.to_be_bytes());
+        file.write_all(&bodies[i].ax.to_be_bytes());
+        file.write_all(&bodies[i].ay.to_be_bytes());
+        file.write_all(&bodies[i].az.to_be_bytes());
+    }
+    Ok(())
+}
 
 pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
