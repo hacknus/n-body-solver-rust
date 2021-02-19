@@ -26,4 +26,4 @@ def read_binary(path):
 
 
 if __name__ == "__main__":
-    read_binary("out1.dat")
+    read_binary("out00001.dat")

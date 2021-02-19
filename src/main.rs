@@ -11,7 +11,7 @@ use crate::io::write_file;
 
 
 fn main() {
-    println!("Hello, Rust!");
+    println!("Hello Rust, let's calculate some orbits!");
     let mut bodies: Vec<Body> = match read_csv("SolSystData.dat") {
         Err(e) => panic!("Problem opening the file: {:?}", e),
         Ok(b) => b,
@@ -26,7 +26,7 @@ fn main() {
         dt = get_dt(&mut bodies);
         t += dt;
         leapfrog(&mut bodies, dt);
-        println!("calculating step {:05}", step);
-        write_file(&format!("output/out{}.dat", step), &bodies);
+        println!("calculating step {}", step);
+        write_file(&format!("output/out{:0>5}.dat", step), &bodies);
     }
 }
