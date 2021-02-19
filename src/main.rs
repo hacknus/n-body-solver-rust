@@ -16,7 +16,7 @@ fn main() {
         Err(e) => panic!("Problem opening the file: {:?}", e),
         Ok(b) => b,
     };
-    let steps: u32 = 100;
+    let steps: u32 = 10;
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
@@ -26,7 +26,7 @@ fn main() {
         dt = get_dt(&mut bodies);
         t += dt;
         leapfrog(&mut bodies, dt);
-        println!("calculating step {:}", step);
+        println!("calculating step {:05}", step);
         write_file(&format!("output/out{}.dat", step), &bodies);
     }
 }
