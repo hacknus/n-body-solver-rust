@@ -10,8 +10,6 @@ use byteorder::LittleEndian;
 
 pub fn write_file(path: &str, bodies: &Vec<Body>) -> std::io::Result<()> {
     let mut file = File::create(path)?;
-    // Write a slice of bytes to the file
-    println!("x is {:.32}", bodies[0].x);
     for i in 0..bodies.len() {
         file.write_f64::<LittleEndian>(bodies[i].x)?;
         file.write_f64::<LittleEndian>(bodies[i].y)?;

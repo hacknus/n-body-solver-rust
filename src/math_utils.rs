@@ -12,12 +12,10 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let mut y: f64;
     let mut z: f64;
     let mut r: f64;
-    //for b in bodies.iter_mut() {
     for i in 0..bodies.len() {
         bodies[i].ax = 0.0;
         bodies[i].ay = 0.0;
         bodies[i].az = 0.0;
-        //for p in bodies.iter() {
         for j in 0..bodies.len() {
             if i != j {
                 x = bodies[i].x - bodies[j].x;
@@ -25,12 +23,9 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
                 z = bodies[i].z - bodies[j].z;
                 r = (x.powi(2) + y.powi(2) + z.powi(2)
                     + softening.powi(2)).powf(1.5);
-                bodies[i].ax -=
-                    g * bodies[j].m * x / r;
-                bodies[i].ay -=
-                    g * bodies[j].m * y / r;
-                bodies[i].az -=
-                    g * bodies[j].m * z / r;
+                bodies[i].ax -= g * bodies[j].m * x / r;
+                bodies[i].ay -= g * bodies[j].m * y / r;
+                bodies[i].az -= g * bodies[j].m * z / r;
             }
         }
     }
@@ -53,7 +48,6 @@ pub fn leapfrog(bodies: &mut Vec<Body>, dt: f64) {
         b.y = b.y + b.vy * 0.5 * dt;
         b.z = b.z + b.vz * 0.5 * dt;
     }
-
 }
 
 pub fn get_dt(bodies: &mut Vec<Body>) -> f64 {
