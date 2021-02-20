@@ -7,7 +7,7 @@ use std::f64;
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let g: f64 = 1.0;
-    let softening: f64 = 0.01;
+    let softening: f64 = 0.0001;
     let mut x: f64;
     let mut y: f64;
     let mut z: f64;

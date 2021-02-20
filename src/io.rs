@@ -4,7 +4,6 @@ mod body;
 use crate::body::Body;
 use std::error::Error;
 use std::fs::File;
-use std::io::prelude::*;
 use byteorder::WriteBytesExt; // This trait adds methods to writeable types
 use byteorder::LittleEndian;
 
