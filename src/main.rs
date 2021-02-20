@@ -9,24 +9,27 @@ use crate::math_utils::calc_direct_force;
 use crate::io::read_csv;
 use crate::io::write_file;
 
-
 fn main() {
     println!("Hello Rust, let's calculate some orbits!");
     let mut bodies: Vec<Body> = match read_csv("SolSystData.dat") {
         Err(e) => panic!("Problem opening the file: {:?}", e),
         Ok(b) => b,
     };
-    let steps: u32 = 10;
+    let steps: u32 = 1000;
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
+    // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies);
 
-    for step in 1..steps {
+    for step in 0..steps {
         dt = get_dt(&bodies);
         t += dt;
         leapfrog(&mut bodies, dt);
         println!("calculating step {} at time t+{:.5}", step, t);
-        write_file(&format!("output/out{:0>5}.dat", step), &bodies);
+        match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
+            Err(e) => panic!("Problem writing the output file: {:?}", e),
+            Ok(()) => (),
+        }
     }
 }
