@@ -1,6 +1,7 @@
 mod body;
 mod math_utils;
 mod io;
+use std::env;
 
 use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
@@ -8,18 +9,20 @@ use crate::io::{read_csv, write_file};
 
 fn main() {
     println!("Hello Rust, let's calculate some orbits!");
-    let mut bodies: Vec<Body> = match read_csv("SolSystData.dat") {
+    let args: Vec<String> = env::args().collect();
+    let path = &args[1];
+    let steps = &args[2].parse::<u32>().unwrap();
+    let mut bodies: Vec<Body> = match read_csv(path) {
         Err(e) => panic!("Problem opening the file: {:?}", e),
         Ok(b) => b,
     };
-    let steps: u32 = 10000;
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies);
 
-    for step in 0..steps {
+    for step in 0..*steps {
         dt = get_dt(&bodies);
         dt = 60.0 * 60.0 * 12.0;
         t += dt;
