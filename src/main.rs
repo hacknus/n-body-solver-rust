@@ -3,11 +3,8 @@ mod math_utils;
 mod io;
 
 use crate::body::Body;
-use crate::math_utils::leapfrog;
-use crate::math_utils::get_dt;
-use crate::math_utils::calc_direct_force;
-use crate::io::read_csv;
-use crate::io::write_file;
+use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
+use crate::io::{read_csv, write_file};
 
 fn main() {
     println!("Hello Rust, let's calculate some orbits!");
@@ -24,7 +21,7 @@ fn main() {
 
     for step in 0..steps {
         dt = get_dt(&bodies);
-        // dt = 60.0 * 60.0 * 24.0;
+        dt = 60.0 * 60.0 * 12.0;
         t += dt;
         leapfrog(&mut bodies, dt);
         println!("calculating step {} at time t+{:.5}", step, t);

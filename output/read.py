@@ -14,7 +14,7 @@ class Planet:
         self.y = [float(df["y"])]
         self.z = [float(df["z"])]
         # self.m = float(df["m"])
-        #self.dt = [float(df["dt"])]
+        # self.dt = [float(df["dt"])]
         # self.t = [float(df["t"])]
         self.color = self.get_color()
         self.color = "yellow"
