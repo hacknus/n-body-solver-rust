@@ -15,7 +15,7 @@ fn main() {
         Err(e) => panic!("Problem opening the file: {:?}", e),
         Ok(b) => b,
     };
-    let steps: u32 = 1000;
+    let steps: u32 = 10000;
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
@@ -24,6 +24,7 @@ fn main() {
 
     for step in 0..steps {
         dt = get_dt(&bodies);
+        // dt = 60.0 * 60.0 * 24.0;
         t += dt;
         leapfrog(&mut bodies, dt);
         println!("calculating step {} at time t+{:.5}", step, t);
