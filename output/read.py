@@ -37,7 +37,8 @@ def read_binary(path):
     # path = "out_10.bin"
     x = np.fromfile(path, dtype=np.float64)
 
-    x = x.reshape((9, 9))
+    # (num_planets, num_params)
+    x = x.reshape((x.shape[0] // 9, 9))
 
     d = {"x": x[:, 0],
          "y": x[:, 1],
@@ -47,7 +48,6 @@ def read_binary(path):
          "vz": x[:, 5],
          }
     df = pd.DataFrame(data=d)
-    print(df.head())
     return df
 
 
@@ -64,7 +64,7 @@ ThreeD = False
 while True:
     if not os.path.exists(f'out{j:05d}.dat'):
         break
-    print(f'reading out{j:05d}.dat')
+    # print(f'reading out{j:05d}.dat')
     master_file = f'out{j:05d}.dat'
 
     # if j >= 100:
@@ -86,6 +86,16 @@ else:
 
 j = len(planets[0].x)
 planets = planets[::1]
+planets[1].color = "brown"
+planets[2].color = "orange"
+planets[3].color = "blue"
+planets[4].color = "red"
+planets[5].color = "brown"
+planets[6].color = "orange"
+planets[7].color = "deepskyblue"
+planets[8].color = "blue"
+
+planets.reverse()
 
 print("found {} objects".format(len(planets)))
 
@@ -94,7 +104,7 @@ print("found {} objects".format(len(planets)))
 
 fig = plt.figure()
 
-fig.set_size_inches(3.6 * 0.5, 3.2 * 0.5, True)
+fig.set_size_inches(5, 5, True)
 
 if ThreeD:
     ax = p3.Axes3D(fig)
@@ -108,12 +118,12 @@ colors = ["yellow" for i in range(len(planets))]
 if ThreeD:
     lines = [ax.plot([], [], [], '-', linewidth=0.05, c=planet.color)[0]
              for planet in planets]
-    pts = [ax.plot([], [], [], color=planet.color, marker='.', lw=0, markersize=0.5, linestyle="")[0]
+    pts = [ax.plot([], [], [], color=planet.color, marker=',', lw=0, markersize=0.5, linestyle="")[0]
            for planet in planets]
 else:
     lines = [ax.plot([], [], '-', linewidth=0.05, c=planet.color)[0]
              for planet in planets]
-    pts = [ax.plot([], [], color=planet.color, marker='.', lw=0, markersize=0.5, linestyle="")[0]
+    pts = [ax.plot([], [], color=planet.color, marker='o', markersize=1, lw=0, linestyle="")[0]
            for planet in planets]
 
 data = planets
@@ -193,8 +203,8 @@ ax.set_ylim(-2, 2)
 
 x = np.max([abs(p.x[0]) for p in planets])
 y = np.max([abs(p.y[0]) for p in planets])
-ax.set_xlim(-1.5 * x, 1.5 * x)
-ax.set_ylim(-1.5 * y, 1.5 * y)
+ax.set_xlim(-1 * x, 1 * x)
+ax.set_ylim(-1 * y, 1 * y)
 
 if ThreeD:
     ax.set_zlim(-size, size)
@@ -219,7 +229,7 @@ if mp4:
     # needs ffmpeg to be installed
     mywriter = animation.FFMpegWriter(fps=24)
     print("saving mp4...")
-    ani.save('galaxy.mp4', savefig_kwargs={'facecolor': 'black'}, writer=mywriter, dpi=600)
+    ani.save('galaxy_mpi.mp4', savefig_kwargs={'facecolor': 'black'}, writer=mywriter, dpi=600)
 if show:
     print("showing")
     plt.show()

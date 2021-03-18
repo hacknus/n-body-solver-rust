@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 csv = "1.1"
 byteorder = "1"
+mpi = "0.5"
