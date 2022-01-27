@@ -1,6 +1,3 @@
-#[path = "body.rs"]
-mod body;
-
 use crate::body::Body;
 
 use itertools::izip;

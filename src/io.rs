@@ -1,6 +1,3 @@
-#[path = "body.rs"]
-mod body;
-
 use crate::body::Body;
 use std::error::Error;
 use std::fs::File;

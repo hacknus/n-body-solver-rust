@@ -10,7 +10,6 @@ use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
 fn main() {
-
     let start = Instant::now();
     println!("Let's calculate some orbits! ");
 
@@ -25,7 +24,6 @@ fn main() {
     };
 
 
-
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
@@ -38,11 +36,12 @@ fn main() {
         t += dt;
         leapfrog(&mut bodies, dt);
         println!("calculating step {} at time t+{:.5}", step, t);
-        // match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
-        //     Err(e) => panic!("Problem writing the output file: {:?}", e),
-        //     Ok(()) => (),
-        // }
-
+        if step % 10 == 0 {
+            match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
+                Err(e) => panic!("Problem writing the output file: {:?}", e),
+                Ok(()) => (),
+            }
+        }
     }
     println!("runtime: {:?}", start.elapsed());
 }
