@@ -9,8 +9,8 @@ use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
-use mpi::request::WaitGuard;
 use mpi::traits::*;
+use body::EMPTY_BODY;
 
 fn main() {
     let universe = mpi::initialize().unwrap();
@@ -22,8 +22,6 @@ fn main() {
     let mut steps: u32 = 0;
     let start: Instant = Instant::now();
     let mut length: usize = 0;
-    println!("Hi from rank {rank}.");
-
 
     if rank == 0 {
         println!("Let's calculate some orbits! ");
@@ -36,26 +34,12 @@ fn main() {
             Ok(b) => b,
         };
         length = bodies.len();
-        let x = bodies[10].x;
     }
 
     world.process_at_rank(0).broadcast_into(&mut steps);
     world.process_at_rank(0).broadcast_into(&mut length);
     if rank != 0 {
-        const empty_body: Body = Body {
-            m: 0.0,
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            vx: 0.0,
-            vy: 0.0,
-            vz: 0.0,
-            ax: 0.0,
-            ay: 0.0,
-            az: 0.0,
-            softening: 0.001,
-        };
-        bodies = vec![empty_body; length];
+        bodies = vec![EMPTY_BODY; length];
     }
     world.process_at_rank(0).broadcast_into(&mut bodies[..]);
 
@@ -86,7 +70,7 @@ fn main() {
         leapfrog(&mut bodies, dt, a, b, world);
         println!("calculating step {} at time t+{:.5}", step, t);
 
-        if rank == 0 {
+        if (rank == 0) && (step % 10 == 0) {
             match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
                 Err(e) => panic!("Problem writing the output file: {:?}", e),
                 Ok(()) => (),

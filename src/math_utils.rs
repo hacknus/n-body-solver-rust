@@ -1,11 +1,7 @@
-#[path = "body.rs"]
-mod body;
-
 use crate::body::Body;
 use itertools::izip;
 
-use mpi::topology::{Rank, SystemCommunicator};
-use mpi::request::WaitGuard;
+use mpi::topology::SystemCommunicator;
 use mpi::traits::*;
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>, lower: usize, upper: usize) {
