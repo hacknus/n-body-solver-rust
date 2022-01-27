@@ -38,10 +38,10 @@ fn main() {
         t += dt;
         leapfrog(&mut bodies, dt);
         println!("calculating step {} at time t+{:.5}", step, t);
-        match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
-            Err(e) => panic!("Problem writing the output file: {:?}", e),
-            Ok(()) => (),
-        }
+        // match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
+        //     Err(e) => panic!("Problem writing the output file: {:?}", e),
+        //     Ok(()) => (),
+        // }
 
     }
     println!("runtime: {:?}", start.elapsed());

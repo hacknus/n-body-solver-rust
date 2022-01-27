@@ -3,7 +3,8 @@ mod body;
 
 use crate::body::Body;
 
-use std::f64;
+use itertools::izip;
+use f64;
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let g: f64 = 6.67408e-11;
@@ -16,23 +17,23 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let mut ay: Vec<f64> = vec![0.0; bodies.len()];
     let mut az: Vec<f64> = vec![0.0; bodies.len()];
 
-    for (i, bi) in bodies.iter().enumerate() {
+    for (i, (bi, axi, ayi, azi)) in izip!(bodies.iter(), &mut ax, &mut ay, &mut az).enumerate() {
         for (j, bj) in bodies.iter().enumerate() {
             if i != j {
                 x = bj.x - bi.x;
                 y = bj.y - bi.y;
                 z = bj.z - bi.z;
                 r = (x * x + y * y + z * z + softening * softening).sqrt();
-                ax[i] += g * bj.m * x / r.powi(3);
-                ay[i] += g * bj.m * y / r.powi(3);
-                az[i] += g * bj.m * z / r.powi(3);
+                *axi += g * bj.m * x / r.powi(3);
+                *ayi += g * bj.m * y / r.powi(3);
+                *azi += g * bj.m * z / r.powi(3);
             }
         }
     }
-    for (i, bi) in bodies.iter_mut().enumerate() {
-        bi.ax = ax[i];
-        bi.ay = ay[i];
-        bi.az = az[i];
+    for (bi, axi, ayi, azi) in izip!(bodies.iter_mut(), &ax, &ay, &az) {
+        bi.ax = *axi;
+        bi.ay = *ayi;
+        bi.az = *azi;
     }
 }
 
