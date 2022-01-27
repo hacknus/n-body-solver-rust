@@ -9,5 +9,3 @@ edition = "2018"
 [dependencies]
 csv = "1.1"
 byteorder = "1"
-#mpi = {version = "0.5", features = ["user-operations", "derive"]}
-mpi = { git = "https://github.com/rsmpi/rsmpi", features = ["user-operations", "derive"] }

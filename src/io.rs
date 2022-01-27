@@ -10,16 +10,16 @@ use byteorder::LittleEndian;
 
 pub fn write_file(path: &str, bodies: &Vec<Body>) -> std::io::Result<()> {
     let mut file = File::create(path)?;
-    for i in 0..bodies.len() {
-        file.write_f64::<LittleEndian>(bodies[i].x)?;
-        file.write_f64::<LittleEndian>(bodies[i].y)?;
-        file.write_f64::<LittleEndian>(bodies[i].z)?;
-        file.write_f64::<LittleEndian>(bodies[i].vx)?;
-        file.write_f64::<LittleEndian>(bodies[i].vy)?;
-        file.write_f64::<LittleEndian>(bodies[i].vz)?;
-        file.write_f64::<LittleEndian>(bodies[i].ax)?;
-        file.write_f64::<LittleEndian>(bodies[i].ay)?;
-        file.write_f64::<LittleEndian>(bodies[i].az)?;
+    for bi in bodies.iter(){
+        file.write_f64::<LittleEndian>(bi.x)?;
+        file.write_f64::<LittleEndian>(bi.y)?;
+        file.write_f64::<LittleEndian>(bi.z)?;
+        file.write_f64::<LittleEndian>(bi.vx)?;
+        file.write_f64::<LittleEndian>(bi.vy)?;
+        file.write_f64::<LittleEndian>(bi.vz)?;
+        file.write_f64::<LittleEndian>(bi.ax)?;
+        file.write_f64::<LittleEndian>(bi.ay)?;
+        file.write_f64::<LittleEndian>(bi.az)?;
     }
     Ok(())
 }
@@ -35,7 +35,7 @@ pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.
         let record = result?;
-        bodies.push(Body {
+        let new_body = Body {
             m: record[1].parse::<f64>().unwrap() * m_sol,
             x: record[2].parse::<f64>().unwrap() * au,
             y: record[3].parse::<f64>().unwrap() * au,
@@ -47,7 +47,8 @@ pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
             ay: 0.0,
             az: 0.0,
             softening: 0.001,
-        });
+        };
+        bodies.push(new_body);
     }
     return Ok(bodies);
 }

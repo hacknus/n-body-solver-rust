@@ -7,6 +7,8 @@ import os
 import pandas as pd
 
 
+file_name = "solar_system"
+
 class Planet:
 
     def __init__(self, df):
@@ -211,8 +213,8 @@ if ThreeD:
     ax.set_zlim(-10, 10)
 
 gif = False
-mp4 = True  # True
-show = False
+mp4 = False  # True
+show = True
 
 ax.set_aspect('equal')
 
@@ -224,12 +226,12 @@ ani = animation.FuncAnimation(fig, animate, init_func=init,
 # save animation
 if gif:
     print("saving gif...")
-    ani.save('galaxy.gif', savefig_kwargs={'facecolor': 'black'}, writer='imagemagick', dpi=100)
+    ani.save(f'{file_name}.gif', savefig_kwargs={'facecolor': 'black'}, writer='imagemagick', dpi=100)
 if mp4:
     # needs ffmpeg to be installed
     mywriter = animation.FFMpegWriter(fps=24)
     print("saving mp4...")
-    ani.save('galaxy_mpi.mp4', savefig_kwargs={'facecolor': 'black'}, writer=mywriter, dpi=600)
+    ani.save(f'{file_name}.mp4', savefig_kwargs={'facecolor': 'black'}, writer=mywriter, dpi=600)
 if show:
     print("showing")
     plt.show()
