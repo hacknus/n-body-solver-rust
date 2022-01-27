@@ -1,3 +1,10 @@
+use mpi::{
+    topology::{Communicator, SystemCommunicator},
+    traits::*,
+    datatype::Equivalence,
+};
+
+#[derive(Equivalence, Clone, Copy)]
 pub struct Body {
     pub m: f64,
     pub x: f64,

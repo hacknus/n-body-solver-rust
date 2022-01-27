@@ -9,40 +9,93 @@ use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
+use mpi::request::WaitGuard;
+use mpi::traits::*;
+
 fn main() {
+    let universe = mpi::initialize().unwrap();
+    let world = universe.world();
+    let num_processes = world.size();
+    let rank = world.rank();
 
-    let start = Instant::now();
-    println!("Let's calculate some orbits! ");
-
-    let args: Vec<String> = env::args().collect();
-    let path = &args[1];
-    let steps = &args[2].parse::<u32>().unwrap();
-    let mut bodies: Vec<Body>;
-
-    bodies = match read_csv(path) {
-        Err(e) => panic!("Problem opening the file: {:?}", e),
-        Ok(b) => b,
-    };
+    let mut bodies: Vec<Body> = Vec::new();
+    let mut steps: u32 = 0;
+    let start: Instant = Instant::now();
+    let mut length: usize = 0;
+    println!("Hi from rank {rank}.");
 
 
+    if rank == 0 {
+        println!("Let's calculate some orbits! ");
+
+        let args: Vec<String> = env::args().collect();
+        let path = &args[1];
+        steps = args[2].parse::<u32>().unwrap();
+        bodies = match read_csv(path) {
+            Err(e) => panic!("Problem opening the file: {:?}", e),
+            Ok(b) => b,
+        };
+        length = bodies.len();
+        let x = bodies[10].x;
+    }
+
+    world.process_at_rank(0).broadcast_into(&mut steps);
+    world.process_at_rank(0).broadcast_into(&mut length);
+    if rank != 0 {
+        const empty_body: Body = Body {
+            m: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            vx: 0.0,
+            vy: 0.0,
+            vz: 0.0,
+            ax: 0.0,
+            ay: 0.0,
+            az: 0.0,
+            softening: 0.001,
+        };
+        bodies = vec![empty_body; length];
+    }
+    world.process_at_rank(0).broadcast_into(&mut bodies[..]);
+
+    let a: usize = (bodies.len() as f32 / num_processes as f32 * rank as f32) as usize;
+    let b: usize = (bodies.len() as f32 / num_processes as f32 * (rank + 1) as f32) as usize;
+
+    println!("total body number: {length}");
+    println!("total step number: {steps}");
+    println!("rank {rank} from lower {a} to upper {b}.");
+    println!("width: {}", b-a);
 
     let mut dt: f64;
     let mut t: f64 = 0.0;
 
     // calculate first forces, in order to get initial dt
-    calc_direct_force(&mut bodies);
+    calc_direct_force(&mut bodies, a, b);
+    for proc in 0..num_processes{
+        let ai: usize = (bodies.len() as f32 / num_processes as f32 * proc as f32) as usize;
+        let bi: usize = (bodies.len() as f32 / num_processes as f32 * (proc + 1) as f32) as usize;
+        world.process_at_rank(proc).broadcast_into(&mut bodies[ai..bi]);
+    }
+    println!("rank {rank} has ax: {}", bodies[4].ax);
 
-    for step in 0..*steps {
-        dt = get_dt(&bodies);
+    for step in 0..steps {
+        // dt = get_dt(&bodies, a, b, world);
         dt = 60.0 * 60.0 * 24.0;
         t += dt;
-        leapfrog(&mut bodies, dt);
+        leapfrog(&mut bodies, dt, a, b, world);
         println!("calculating step {} at time t+{:.5}", step, t);
-        match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
-            Err(e) => panic!("Problem writing the output file: {:?}", e),
-            Ok(()) => (),
-        }
 
+        if rank == 0 {
+            match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
+                Err(e) => panic!("Problem writing the output file: {:?}", e),
+                Ok(()) => (),
+            }
+        }
+        println!("step: {step} on rank {rank}.");
     }
-    println!("runtime: {:?}", start.elapsed());
+
+    if rank == 0 {
+        println!("runtime: {:?}", start.elapsed());
+    }
 }
