@@ -3,22 +3,23 @@ mod math_utils;
 mod io;
 
 extern crate mpi;
-
-use mpi::request::WaitGuard;
 use mpi::traits::*;
 
 use std::env;
+use std::time::Instant;
 
 use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
 fn main() {
+
     let universe = mpi::initialize().unwrap();
     let world = universe.world();
     let size = world.size();
     let rank = world.rank();
 
+    let start = Instant::now();
     println!("Let's calculate some orbits! I am on rank {} ", rank);
 
     let args: Vec<String> = env::args().collect();
@@ -34,6 +35,13 @@ fn main() {
         Ok(b) => b,
     };
 
+    // // broadcast bodies to all processes from root
+    // let t = UserDatatype::vector(2,2,3,
+    //                              &Rank::equivalent_datatype());
+    // let mut buf = unsafe{MutView::with_count_and_datatype(
+    //     &mut bodies[..], 1, &t)};
+    // world.process_at_rank(0).broadcast_into(&mut buf);
+
 
 
     let mut dt: f64;
@@ -48,7 +56,7 @@ fn main() {
     calc_direct_force(&mut bodies, world, a, b);
 
     for step in 0..*steps {
-        dt = get_dt(&bodies, world);
+        // dt = get_dt(&bodies, world, a, b);
         dt = 60.0 * 60.0 * 24.0;
         t += dt;
         leapfrog(&mut bodies, dt, world, a, b);
@@ -59,5 +67,8 @@ fn main() {
                 Ok(()) => (),
             }
         }
+    }
+    if rank == 0 {
+        println!("runtime: {:?}", start.elapsed());
     }
 }

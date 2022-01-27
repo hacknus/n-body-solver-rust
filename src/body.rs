@@ -1,4 +1,11 @@
-#[derive(PartialEq, PartialOrd)]
+extern crate mpi;
+
+use crate::mpi::{
+    topology::{Communicator, SystemCommunicator},
+    traits::*,
+};
+
+#[derive(Equivalence, Clone, Copy)]
 pub struct Body {
     pub m: f64,
     pub x: f64,
