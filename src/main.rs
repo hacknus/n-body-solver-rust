@@ -9,9 +9,11 @@ use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
+type Real = f32;
+
 fn main() {
-    let start = Instant::now();
     println!("Let's calculate some orbits! ");
+    let init_start = Instant::now();
 
     let args: Vec<String> = env::args().collect();
     let path = &args[1];
@@ -23,12 +25,24 @@ fn main() {
         Ok(b) => b,
     };
 
+    let mut dt: Real;
+    let mut t: Real = 0.0;
+    println!("init time: {:?}", init_start.elapsed());
 
-    let mut dt: f64;
-    let mut t: f64 = 0.0;
-
+    println!("starting calculation...");
+    let start = Instant::now();
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies);
+    println!("run time: {:?}", start.elapsed());
+
+    let save_start = Instant::now();
+    match write_file(&format!("output/out_johannes{:0>5}.dat", 0), &bodies) {
+        Err(e) => panic!("Problem writing the output file: {:?}", e),
+        Ok(()) => (),
+    }
+    println!("save time: {:?}", save_start.elapsed());
+
+    return;
 
     for step in 0..*steps {
         dt = get_dt(&bodies);
