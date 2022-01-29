@@ -11,8 +11,12 @@ use crate::io::{read_csv, write_file};
 
 use mpi::traits::*;
 use body::EMPTY_BODY;
+type Real = f32;
 
 fn main() {
+
+    let init_start: Instant = Instant::now();
+
     let universe = mpi::initialize().unwrap();
     let world = universe.world();
     let num_processes = world.size();
@@ -20,7 +24,6 @@ fn main() {
 
     let mut bodies: Vec<Body> = Vec::new();
     let mut steps: u32 = 0;
-    let start: Instant = Instant::now();
     let mut length: usize = 0;
 
     if rank == 0 {
@@ -51,8 +54,13 @@ fn main() {
     println!("rank {rank} from lower {a} to upper {b}.");
     println!("width: {}", b-a);
 
-    let mut dt: f64;
-    let mut t: f64 = 0.0;
+    let mut dt: Real;
+    let mut t: Real = 0.0;
+
+    if rank == 0 {
+        println!("init time: {:?}", init_start.elapsed());
+    }
+    let run_start: Instant = Instant::now();
 
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies, a, b);
@@ -61,7 +69,23 @@ fn main() {
         let bi: usize = (bodies.len() as f32 / num_processes as f32 * (proc + 1) as f32) as usize;
         world.process_at_rank(proc).broadcast_into(&mut bodies[ai..bi]);
     }
+    if rank == 0 {
+        println!("run time: {:?}", run_start.elapsed());
+    }
     println!("rank {rank} has ax: {}", bodies[4].ax);
+
+    let save_start: Instant = Instant::now();
+
+    if rank == 0 {
+        match write_file(&format!("output/out_johannes{:0>5}.dat", 0), &bodies) {
+            Err(e) => panic!("Problem writing the output file: {:?}", e),
+            Ok(()) => (),
+        }
+        println!("save time: {:?}", save_start.elapsed());
+    }
+
+    return;
+
 
     for step in 0..steps {
         // dt = get_dt(&bodies, a, b, world);
@@ -80,6 +104,6 @@ fn main() {
     }
 
     if rank == 0 {
-        println!("runtime: {:?}", start.elapsed());
+        println!("runtime: {:?}", run_start.elapsed());
     }
 }
