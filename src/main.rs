@@ -46,8 +46,8 @@ fn main() {
     }
     world.process_at_rank(0).broadcast_into(&mut bodies[..]);
 
-    let a: usize = (bodies.len() as f32 / num_processes as f32 * rank as f32) as usize;
-    let b: usize = (bodies.len() as f32 / num_processes as f32 * (rank + 1) as f32) as usize;
+    let a: usize = (length as f32 / num_processes as f32 * rank as f32) as usize;
+    let b: usize = (length as f32 / num_processes as f32 * (rank + 1) as f32) as usize;
 
     println!("total body number: {length}");
     println!("total step number: {steps}");
@@ -65,27 +65,10 @@ fn main() {
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies, a, b);
     for proc in 0..num_processes{
-        let ai: usize = (bodies.len() as f32 / num_processes as f32 * proc as f32) as usize;
-        let bi: usize = (bodies.len() as f32 / num_processes as f32 * (proc + 1) as f32) as usize;
+        let ai: usize = (length as f32 / num_processes as f32 * proc as f32) as usize;
+        let bi: usize = (length as f32 / num_processes as f32 * (proc + 1) as f32) as usize;
         world.process_at_rank(proc).broadcast_into(&mut bodies[ai..bi]);
     }
-    if rank == 0 {
-        println!("run time: {:?}", run_start.elapsed());
-    }
-    println!("rank {rank} has ax: {}", bodies[4].ax);
-
-    let save_start: Instant = Instant::now();
-
-    if rank == 0 {
-        match write_file(&format!("output/out_johannes{:0>5}.dat", 0), &bodies) {
-            Err(e) => panic!("Problem writing the output file: {:?}", e),
-            Ok(()) => (),
-        }
-        println!("save time: {:?}", save_start.elapsed());
-    }
-
-    return;
-
 
     for step in 0..steps {
         // dt = get_dt(&bodies, a, b, world);
