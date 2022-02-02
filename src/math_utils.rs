@@ -4,7 +4,7 @@ use crate::body::EMPTY_ACC;
 use crate::Real;
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
-    let g: Real = 1.0; //6.67408e-11;
+    let g: Real = 6.67408e-11;
     let softening: Real = 0.0001;
     let mut x: Real;
     let mut y: Real;

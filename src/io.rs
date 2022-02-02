@@ -26,9 +26,9 @@ pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
     let mut rdr = csv::Reader::from_path(path)?;
     let mut bodies: Vec<Body> = Vec::new();
-    let au: Real = 1.0; //1.5e11;
-    let m_sol: Real = 1.0; //2e30;
-    let day: Real = 1.0; //24.0 * 60.0 * 60.0;
+    let au: Real = 1.5e11;
+    let m_sol: Real = 2e30;
+    let day: Real = 24.0 * 60.0 * 60.0;
     for result in rdr.records() {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.

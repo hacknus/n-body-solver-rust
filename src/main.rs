@@ -33,16 +33,6 @@ fn main() {
     let start = Instant::now();
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies);
-    println!("run time: {:?}", start.elapsed());
-
-    let save_start = Instant::now();
-    match write_file(&format!("output/out_johannes{:0>5}.dat", 0), &bodies) {
-        Err(e) => panic!("Problem writing the output file: {:?}", e),
-        Ok(()) => (),
-    }
-    println!("save time: {:?}", save_start.elapsed());
-
-    return;
 
     for step in 0..*steps {
         dt = get_dt(&bodies);
