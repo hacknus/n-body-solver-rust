@@ -1,6 +1,7 @@
 use crate::Real;
+use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Body {
     pub m: Real,
     pub x: Real,
@@ -15,11 +16,8 @@ pub struct Body {
     pub softening: Real,
 }
 
-#[derive(Debug, Clone)]
-pub struct Acc {
-    pub x : Real,
-    pub y : Real,
-    pub z : Real,
+impl fmt::Display for Body {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "m = {}, pos = [{},{},{}], vel = [{},{},{}]", self.m, self.x, self.y, self.z, self.vx, self.vy, self.vz)
+    }
 }
-
-pub const EMPTY_ACC: Acc = Acc { x: 0.0, y: 0.0, z: 0.0 };

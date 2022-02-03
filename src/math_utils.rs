@@ -1,7 +1,85 @@
 use crate::body::Body;
-use crate::body::Acc;
-use crate::body::EMPTY_ACC;
 use crate::Real;
+use std::fmt;
+use std::ops::Add;
+use std::ops::Sub;
+use std::ops::Mul;
+
+#[derive(Debug, Clone)]
+pub struct Vector {
+    pub x: Real,
+    pub y: Real,
+    pub z: Real,
+}
+
+impl Vector {
+    pub fn norm(&self) -> Real {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+}
+
+impl Add for &Vector {
+    type Output = Vector;
+    fn add(self, v: &Vector) -> Vector {
+        Vector { x: self.x + v.x, y: self.y + v.y, z: self.z + v.z }
+    }
+}
+
+impl Sub for &Vector {
+    type Output = Vector;
+    fn sub(self, v: &Vector) -> Vector {
+        Vector { x: self.x - v.x, y: self.y - v.y, z: self.z - v.z }
+    }
+}
+
+impl Mul<Real> for Vector {
+    type Output = Vector;
+    fn mul(self, a: Real) -> Vector {
+        Vector { x: self.x * a, y: self.y * a, z: self.z * a }
+    }
+}
+
+impl PartialEq for Vector {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+
+impl fmt::Display for Vector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{},{},{}]", self.x, self.y, self.z)
+    }
+}
+
+pub const EMPTY_VEC: Vector = Vector { x: 0.0, y: 0.0, z: 0.0 };
+
+pub fn calc_m_tot(bodies: &Vec<Body>, indices: &Vec<usize>) -> Real {
+    let mut m_tot = 0.0;
+    for (i,b) in bodies.iter().enumerate() {
+        if indices.contains(&i){
+            m_tot += b.m;
+        }
+    }
+    return m_tot;
+}
+
+pub fn calc_com(bodies: &Vec<Body>, indices: &Vec<usize>) -> Vector {
+    let mut com = EMPTY_VEC;
+    let mut m_tot = 0.0;
+
+    for (i,b) in bodies.iter().enumerate() {
+        if indices.contains(&i){
+            m_tot += b.m;
+            com.x += b.x * b.m;
+            com.y += b.y * b.m;
+            com.z += b.z * b.m;
+        }
+    }
+    com.x /= m_tot;
+    com.y /= m_tot;
+    com.z /= m_tot;
+    return com;
+}
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let g: Real = 6.67408e-11;
@@ -12,7 +90,7 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let mut r: Real;
     let mut temp: Real;
 
-    let mut a: Vec<Acc> = vec![EMPTY_ACC; bodies.len()];
+    let mut a: Vec<Vector> = vec![EMPTY_VEC; bodies.len()];
     for (i, (bi, acci)) in bodies.iter().zip(a.iter_mut()).enumerate() {
         for (j, bj) in bodies.iter().enumerate() {
             if i != j {
@@ -66,4 +144,18 @@ pub fn get_dt(bodies: &Vec<Body>) -> Real {
     min_dt = dt.iter().fold(Real::INFINITY, |ai, &bi| ai.min(bi));
     println!("min_dt is {:.32}", min_dt);
     return min_dt;
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut a = Vector { x: 1.0, y: 2.0, z: 3.0 };
+        let mut b = Vector { x: 4.0, y: 5.0, z: 6.0 };
+        let mut c = &a + &b;
+        assert_eq!(c, Vector { x: 5.0, y: 7.0, z: 9.0 })
+    }
 }
