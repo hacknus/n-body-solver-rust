@@ -1,21 +1,25 @@
-extern crate mpi;
+use crate::Real;
 
-use crate::mpi::{
-    topology::{Communicator, SystemCommunicator},
-    traits::*,
-};
-
-#[derive(Equivalence, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Body {
-    pub m: f64,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-    pub vx: f64,
-    pub vy: f64,
-    pub vz: f64,
-    pub ax: f64,
-    pub ay: f64,
-    pub az: f64,
-    pub softening: f64,
+    pub m: Real,
+    pub x: Real,
+    pub y: Real,
+    pub z: Real,
+    pub vx: Real,
+    pub vy: Real,
+    pub vz: Real,
+    pub ax: Real,
+    pub ay: Real,
+    pub az: Real,
+    pub softening: Real,
 }
+
+#[derive(Debug, Clone)]
+pub struct Acc {
+    pub x : Real,
+    pub y : Real,
+    pub z : Real,
+}
+
+pub const EMPTY_ACC: Acc = Acc { x: 0.0, y: 0.0, z: 0.0 };
