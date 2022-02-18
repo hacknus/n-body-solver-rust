@@ -125,13 +125,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tree_init() {
+    fn test_add() {
+        let mut a = Vector { x: 1.0, y: 2.0, z: 3.0 };
+        let mut b = Vector { x: 4.0, y: 5.0, z: 6.0 };
+        let mut c = &a + &b;
+        assert_eq!(c, Vector { x: 5.0, y: 7.0, z: 9.0 })
+    }
+
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_direct() {
         let a = Body { m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let b = Body { m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let c = Body { m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let d = Body { m: 1.0, x: 0.5, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
         let mut bodies: Vec<Body> = vec![a, b, c, d];
+
         calc_direct_force(&mut bodies);
+        assert_eq!(0.06952047, bodies[0].ax);
+        assert_eq!(-0.72733426, bodies[0].ay, );
+        assert_eq!(0.0, bodies[0].az);
+        assert_eq!(103.99984, bodies[1].ax);
+        assert_eq!(0.25, bodies[1].ay, );
+        assert_eq!(0.0, bodies[1].az);
+        assert_eq!(-93.76229, bodies[2].ax);
+        assert_eq!(0.24906544, bodies[2].ay);
+        assert_eq!(0.0, bodies[2].az);
+        assert_eq!(-10.307066, bodies[3].ax);
+        assert_eq!(0.22826882, bodies[3].ay);
+        assert_eq!(0.0, bodies[3].az);
     }
 }
