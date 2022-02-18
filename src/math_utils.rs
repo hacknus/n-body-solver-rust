@@ -1,5 +1,5 @@
 use crate::body::Body;
-use crate::Real;
+use crate::{Node, Real};
 use std::fmt;
 use std::ops::Add;
 use std::ops::Sub;
@@ -105,6 +105,45 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
         bi.ax = acci.x;
         bi.ay = acci.y;
         bi.az = acci.z;
+    }
+}
+
+pub fn tree_walk(body: &Body, i: usize, node: &Node, theta: Real) -> Vector {
+    let mut a = EMPTY_VEC;
+    let mut temp: Real = 0.0;
+    let softening: Real = 0.0;
+    let g: Real = 1.0;
+    let x: Real = body.x - node.com.x;
+    let y: Real = body.y - node.com.y;
+    let z: Real = body.z - node.com.z;
+    let mut r: Real = (x * x + y * y + z * z).sqrt();
+    if (node.size / r < theta) || (node.is_leaf == true) {
+        if node.id == body.id {
+            a = EMPTY_VEC;
+        } else {
+            r = (x * x + y * y + z * z + softening * softening).sqrt();
+            temp = g * body.m / r.powi(3);
+            a.x = temp * x;
+            a.y = temp * y;
+            a.z = temp * z;
+        }
+    } else {
+        let len = node.children.len();
+        for child in node.children.iter() {
+            a = &a + &tree_walk(body, i, child, theta);
+        }
+    }
+    return a;
+}
+
+pub fn calc_forces_tree(bodies: &mut Vec<Body>, root: &Node) {
+    let theta = 0.0;
+    for (i, b) in bodies.iter_mut().enumerate() {
+        let a = tree_walk(b, i, root, theta);
+        println!("{}", a);
+        b.ax = a.x;
+        b.ay = a.y;
+        b.az = a.z;
     }
 }
 

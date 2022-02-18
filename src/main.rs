@@ -7,9 +7,9 @@ use std::env;
 use std::time::Instant;
 
 use crate::body::Body;
-use crate::math_utils::{leapfrog, get_dt, calc_direct_force, EMPTY_VEC};
+use crate::math_utils::{leapfrog, get_dt, calc_direct_force, EMPTY_VEC, calc_forces_tree};
 use crate::io::{read_csv, write_file};
-use crate::node::{Node, EMPTY_NODE, calc_forces_tree, init_root};
+use crate::node::{Node, EMPTY_NODE, init_root};
 
 type Real = f32;
 
@@ -44,8 +44,6 @@ fn main() {
         Some(tree_root) => root = tree_root,
         None => println!("error building root"),
     }
-
-    root.make_branches(&mut bodies_p);
 
     println!("building time: {:?}", start_build.elapsed());
 
