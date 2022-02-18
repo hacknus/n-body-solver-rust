@@ -37,9 +37,9 @@ impl Node {
                 id = bodies[0].id;
                 is_leaf = true;
             }
-            let mut new_node = Node { id, children: Vec::new(), m: m_tot, com, size, is_leaf };
-            new_node.make_branches(bodies, min, max);
-            Some(new_node)
+            let mut child = Node { id, children: Vec::new(), m: m_tot, com, size, is_leaf };
+            child.make_branches(bodies, min, max);
+            Some(child)
         } else {
             None
         }
@@ -88,14 +88,22 @@ impl Node {
                 }
             }
         }
+        for c in self.children.iter() {
+            println!{"{c}"};
+        }
     }
 }
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "id = {}, is leaf = {}, com = {}", self.id, self.is_leaf, self.com)
+        write!(f, "id = {}, is leaf = {}, com = {}, children number = {}", self.id, self.is_leaf, self.com, self.children.len());
+        for c in &self.children {
+            write!(f, "\t{}", c.id)?;
+        }
+        Ok(())
     }
 }
+
 
 pub fn init_root(bodies: &mut Vec<&Body>) -> Option<Node> {
     let com = calc_com(&bodies);
