@@ -54,7 +54,7 @@ pub const EMPTY_VEC: Vector = Vector { x: 0.0, y: 0.0, z: 0.0 };
 
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
-    let g: Real = 6.67408e-11;
+    let g: Real = 1.0; //6.67408e-11;
     let softening: Real = 0.0001;
     let mut x: Real;
     let mut y: Real;
@@ -81,6 +81,7 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
         bi.ax = acci.x;
         bi.ay = acci.y;
         bi.az = acci.z;
+        println!("{acci}");
     }
 }
 
@@ -116,4 +117,21 @@ pub fn get_dt(bodies: &Vec<Body>) -> Real {
     min_dt = dt.iter().fold(Real::INFINITY, |ai, &bi| ai.min(bi));
     println!("min_dt is {:.32}", min_dt);
     return min_dt;
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_tree_init() {
+        let a = Body { m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let b = Body { m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let c = Body { m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let d = Body { m: 1.0, x: 0.5, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
+        let mut bodies: Vec<Body> = vec![a, b, c, d];
+        calc_direct_force(&mut bodies);
+    }
 }
