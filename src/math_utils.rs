@@ -116,12 +116,11 @@ pub fn tree_walk(body: &Body, i: usize, node: &Node, theta: Real) -> Vector {
     let x: Real = node.com.x - body.x;
     let y: Real = node.com.y - body.y;
     let z: Real = node.com.z - body.z;
-    let mut r: Real = (x * x + y * y + z * z).sqrt();
+    let r = (x * x + y * y + z * z + softening * softening).sqrt();
     if (node.size / r < theta) || (node.is_leaf == true) {
         if node.id == body.id {
             a = EMPTY_VEC;
         } else {
-            r = (x * x + y * y + z * z + softening * softening).sqrt();
             temp = g * body.m / r.powi(3);
             a.x = temp * x;
             a.y = temp * y;
@@ -199,7 +198,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tree_init() {
+    fn test_tree_init1() {
         let a = Body { id: 1, m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let b = Body { id: 2, m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let c = Body { id: 3, m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
@@ -221,6 +220,37 @@ mod tests {
                 assert_eq!(0.0, bodies[2].az);
                 assert_eq!(-10.307067, bodies[3].ax);
                 assert_eq!(0.22826882, bodies[3].ay);
+                assert_eq!(0.0, bodies[3].az);
+            }
+            None => return,
+        }
+    }
+
+    fn test_tree_init2() {
+        let a = Body { id: 1, m: 1.0, x: -1.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let b = Body { id: 2, m: 1.0, x: -1.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let c = Body { id: 3, m: 1.0, x: 1.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let d = Body { id: 4, m: 1.0, x: 1.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
+        let mut bodies: Vec<Body> = vec![a, b, c, d];
+        let result = init_root(&mut bodies_p);
+        match result {
+            Some(mut root) => {
+                calc_forces_tree(&mut bodies, &root);
+                for b in bodies.iter() {
+                    println!("{}, {}, {}", b.ax, b.ay, b.az);
+                }
+                assert_eq!(0.33838835, bodies[0].ax);
+                assert_eq!(0.33838835, bodies[0].ay, );
+                assert_eq!(0.0, bodies[0].az);
+                assert_eq!(0.33838835, bodies[1].ax);
+                assert_eq!(-0.33838835, bodies[1].ay, );
+                assert_eq!(0.0, bodies[1].az);
+                assert_eq!(-0.33838835, bodies[2].ax);
+                assert_eq!(-0.33838835, bodies[2].ay);
+                assert_eq!(0.0, bodies[2].az);
+                assert_eq!(-0.33838835, bodies[3].ax);
+                assert_eq!(0.33838835, bodies[3].ay);
                 assert_eq!(0.0, bodies[3].az);
             }
             None => return,
