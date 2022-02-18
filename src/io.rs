@@ -34,6 +34,7 @@ pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
         // error here.
         let record = result?;
         let new_body = Body {
+            id : record[0].parse::<u32>().unwrap(),
             m: record[1].parse::<Real>().unwrap() * m_sol,
             x: record[2].parse::<Real>().unwrap() * au,
             y: record[3].parse::<Real>().unwrap() * au,
