@@ -14,12 +14,3 @@ pub struct Body {
     pub az: Real,
     pub softening: Real,
 }
-
-#[derive(Debug, Clone)]
-pub struct Acc {
-    pub x : Real,
-    pub y : Real,
-    pub z : Real,
-}
-
-pub const EMPTY_ACC: Acc = Acc { x: 0.0, y: 0.0, z: 0.0 };

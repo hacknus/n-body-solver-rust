@@ -1,7 +1,57 @@
+use std::fmt;
+use std::ops::{Add, Mul, Sub};
 use crate::body::Body;
-use crate::body::Acc;
-use crate::body::EMPTY_ACC;
 use crate::Real;
+
+
+#[derive(Debug, Clone)]
+pub struct Vector {
+    pub x: Real,
+    pub y: Real,
+    pub z: Real,
+}
+
+impl Vector {
+    pub fn norm(&self) -> Real {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+}
+
+impl Add for &Vector {
+    type Output = Vector;
+    fn add(self, v: &Vector) -> Vector {
+        Vector { x: self.x + v.x, y: self.y + v.y, z: self.z + v.z }
+    }
+}
+
+impl Sub for &Vector {
+    type Output = Vector;
+    fn sub(self, v: &Vector) -> Vector {
+        Vector { x: self.x - v.x, y: self.y - v.y, z: self.z - v.z }
+    }
+}
+
+impl Mul<Real> for Vector {
+    type Output = Vector;
+    fn mul(self, a: Real) -> Vector {
+        Vector { x: self.x * a, y: self.y * a, z: self.z * a }
+    }
+}
+
+impl PartialEq for Vector {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+
+impl fmt::Display for Vector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{},{},{}]", self.x, self.y, self.z)
+    }
+}
+
+pub const EMPTY_VEC: Vector = Vector { x: 0.0, y: 0.0, z: 0.0 };
+
 
 pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let g: Real = 6.67408e-11;
@@ -12,7 +62,7 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     let mut r: Real;
     let mut temp: Real;
 
-    let mut a: Vec<Acc> = vec![EMPTY_ACC; bodies.len()];
+    let mut a: Vec<Vector> = vec![EMPTY_VEC; bodies.len()];
     for (i, (bi, acci)) in bodies.iter().zip(a.iter_mut()).enumerate() {
         for (j, bj) in bodies.iter().enumerate() {
             if i != j {
