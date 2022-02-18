@@ -136,7 +136,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_direct() {
+    fn test_direct1() {
         let a = Body { m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let b = Body { m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
         let c = Body { m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
@@ -156,6 +156,30 @@ mod tests {
         assert_eq!(0.0, bodies[2].az);
         assert_eq!(-10.307066, bodies[3].ax);
         assert_eq!(0.22826882, bodies[3].ay);
+        assert_eq!(0.0, bodies[3].az);
+    }
+
+    #[test]
+    fn test_direct2() {
+        let a = Body { m: 1.0, x: -1.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let b = Body { m: 1.0, x: -1.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let c = Body { m: 1.0, x: 1.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let d = Body { m: 1.0, x: 1.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
+        let mut bodies: Vec<Body> = vec![a, b, c, d];
+
+        calc_direct_force(&mut bodies);
+        assert_eq!(0.33838835, bodies[0].ax);
+        assert_eq!(0.33838835, bodies[0].ay, );
+        assert_eq!(0.0, bodies[0].az);
+        assert_eq!(0.33838835, bodies[1].ax);
+        assert_eq!(-0.33838835, bodies[1].ay, );
+        assert_eq!(0.0, bodies[1].az);
+        assert_eq!(-0.33838835, bodies[2].ax);
+        assert_eq!(-0.33838835, bodies[2].ay);
+        assert_eq!(0.0, bodies[2].az);
+        assert_eq!(-0.33838835, bodies[3].ax);
+        assert_eq!(0.33838835, bodies[3].ay);
         assert_eq!(0.0, bodies[3].az);
     }
 }
