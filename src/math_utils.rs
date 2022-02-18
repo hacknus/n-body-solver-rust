@@ -53,27 +53,23 @@ impl fmt::Display for Vector {
 
 pub const EMPTY_VEC: Vector = Vector { x: 0.0, y: 0.0, z: 0.0 };
 
-pub fn calc_m_tot(bodies: &Vec<Body>, indices: &Vec<usize>) -> Real {
+pub fn calc_m_tot(bodies: &Vec<&Body>) -> Real {
     let mut m_tot = 0.0;
-    for (i,b) in bodies.iter().enumerate() {
-        if indices.contains(&i){
-            m_tot += b.m;
-        }
+    for b in bodies.iter() {
+        m_tot += b.m;
     }
     return m_tot;
 }
 
-pub fn calc_com(bodies: &Vec<Body>, indices: &Vec<usize>) -> Vector {
+pub fn calc_com(mut bodies: &Vec<&Body>) -> Vector {
     let mut com = EMPTY_VEC;
     let mut m_tot = 0.0;
 
-    for (i,b) in bodies.iter().enumerate() {
-        if indices.contains(&i){
-            m_tot += b.m;
-            com.x += b.x * b.m;
-            com.y += b.y * b.m;
-            com.z += b.z * b.m;
-        }
+    for b in bodies.iter() {
+        m_tot += b.m;
+        com.x += b.x * b.m;
+        com.y += b.y * b.m;
+        com.z += b.z * b.m;
     }
     com.x /= m_tot;
     com.y /= m_tot;

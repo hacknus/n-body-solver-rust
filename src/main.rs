@@ -27,6 +27,11 @@ fn main() {
         Ok(b) => b,
     };
 
+    let mut bodies_p: Vec<&Body> = Vec::new();
+    for b in bodies.iter(){
+        bodies_p.push(&b);
+    }
+
     let mut dt: Real;
     let mut t: Real = 0.0;
     println!("init time: {:?}", init_start.elapsed());
@@ -34,12 +39,13 @@ fn main() {
 
     println!("starting tree building...");
     let mut root: Node = EMPTY_NODE;
-    let result = init_root(&bodies);
+    let result = init_root(&mut bodies_p);
     match result {
         Some(tree_root) => root = tree_root,
         None => println!("error building root"),
     }
-    root.make_branches(&bodies);
+
+    root.make_branches(&mut bodies_p);
 
     println!("building time: {:?}", start_build.elapsed());
 
