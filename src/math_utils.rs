@@ -113,9 +113,9 @@ pub fn tree_walk(body: &Body, i: usize, node: &Node, theta: Real) -> Vector {
     let mut temp: Real = 0.0;
     let softening: Real = 0.0;
     let g: Real = 1.0;
-    let x: Real = body.x - node.com.x;
-    let y: Real = body.y - node.com.y;
-    let z: Real = body.z - node.com.z;
+    let x: Real = node.com.x - body.x;
+    let y: Real = node.com.y - body.y;
+    let z: Real = node.com.z - body.z;
     let mut r: Real = (x * x + y * y + z * z).sqrt();
     if (node.size / r < theta) || (node.is_leaf == true) {
         if node.id == body.id {
@@ -140,7 +140,7 @@ pub fn calc_forces_tree(bodies: &mut Vec<Body>, root: &Node) {
     let theta = 0.0;
     for (i, b) in bodies.iter_mut().enumerate() {
         let a = tree_walk(b, i, root, theta);
-        println!("{}", a);
+        // println!("{}", a);
         b.ax = a.x;
         b.ay = a.y;
         b.az = a.z;
@@ -192,5 +192,38 @@ mod tests {
         let mut b = Vector { x: 4.0, y: 5.0, z: 6.0 };
         let mut c = &a + &b;
         assert_eq!(c, Vector { x: 5.0, y: 7.0, z: 9.0 })
+    }
+
+    use crate::{calc_forces_tree, init_root};
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_tree_init() {
+        let a = Body { id: 1, m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let b = Body { id: 2, m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let c = Body { id: 3, m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let d = Body { id: 4, m: 1.0, x: 0.5, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
+        let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
+        let mut bodies: Vec<Body> = vec![a, b, c, d];
+        let result = init_root(&mut bodies_p);
+        match result {
+            Some(mut root) => {
+                calc_forces_tree(&mut bodies, &root);
+                assert_eq!(0.06952047, bodies[0].ax);
+                assert_eq!(-0.72733426, bodies[0].ay, );
+                assert_eq!(0.0, bodies[0].az);
+                assert_eq!(103.99999, bodies[1].ax);
+                assert_eq!(0.25, bodies[1].ay, );
+                assert_eq!(0.0, bodies[1].az);
+                assert_eq!(-93.76244, bodies[2].ax);
+                assert_eq!(0.24906544, bodies[2].ay);
+                assert_eq!(0.0, bodies[2].az);
+                assert_eq!(-10.307067, bodies[3].ax);
+                assert_eq!(0.22826882, bodies[3].ay);
+                assert_eq!(0.0, bodies[3].az);
+            }
+            None => return,
+        }
     }
 }

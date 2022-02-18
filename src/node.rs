@@ -112,27 +112,3 @@ pub fn init_root(bodies: &mut Vec<&Body>) -> Option<Node> {
     let max = &Vector { x: max_r, y: max_r, z: max_r } + &com;
     Node::new_node(bodies, &min, &max)
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::calc_forces_tree;
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
-
-    #[test]
-    fn test_tree_init() {
-        let a = Body { id: 1, m: 1.0, x: 0.0, y: 1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
-        let b = Body { id: 2, m: 1.0, x: 0.0, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
-        let c = Body { id: 3, m: 1.0, x: 0.1, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
-        let d = Body { id: 4, m: 1.0, x: 0.5, y: -1.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, ax: 0.0, ay: 0.0, az: 0.0, softening: 0.0 };
-        let mut bodies_p: Vec<&Body> = vec![&a, &b, &c, &d];
-        let mut bodies: Vec<Body> = vec![a, b, c, d];
-        let result = init_root(&mut bodies_p);
-        match result {
-            Some(mut root) => {
-                calc_forces_tree(&mut bodies, &root)
-            }
-            None => return,
-        }
-    }
-}
