@@ -33,6 +33,13 @@ fn main() {
     let start = Instant::now();
     // calculate first forces, in order to get initial dt
     calc_direct_force(&mut bodies);
+    println!("runtime: {:?}", start.elapsed());
+
+    match write_file(&format!("output/out{:0>5}_serial.dat", 0), &bodies) {
+        Err(e) => panic!("Problem writing the output file: {:?}", e),
+        Ok(()) => (),
+    }
+    return;
 
     for step in 0..*steps {
         dt = get_dt(&bodies);

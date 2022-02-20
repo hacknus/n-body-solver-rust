@@ -81,7 +81,7 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
         bi.ax = acci.x;
         bi.ay = acci.y;
         bi.az = acci.z;
-        println!("{acci}");
+        //println!("{acci}");
     }
 }
 
