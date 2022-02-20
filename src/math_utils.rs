@@ -136,7 +136,7 @@ pub fn tree_walk(body: &Body, i: usize, node: &Node, theta: Real) -> Vector {
 }
 
 pub fn calc_forces_tree(bodies: &mut Vec<Body>, root: &Node) {
-    let theta = 0.5;
+    let theta = 0.0;
     for (i, b) in bodies.iter_mut().enumerate() {
         let a = tree_walk(b, i, root, theta);
         // println!("{}", a);
@@ -209,17 +209,17 @@ mod tests {
         match result {
             Some(mut root) => {
                 calc_forces_tree(&mut bodies, &root);
-                assert_eq!(0.06952047, bodies[0].ax);
-                assert_eq!(-0.72733426, bodies[0].ay, );
+                assert_eq!(0.06952031, bodies[0].ax);
+                assert_eq!(-0.7273324, bodies[0].ay, );
                 assert_eq!(0.0, bodies[0].az);
-                assert_eq!(103.99984, bodies[1].ax);
-                assert_eq!(0.25, bodies[1].ay, );
+                assert_eq!(103.89056, bodies[1].ax);
+                assert_eq!(0.24999937, bodies[1].ay, );
                 assert_eq!(0.0, bodies[1].az);
-                assert_eq!(-93.76229, bodies[2].ax);
-                assert_eq!(0.24906544, bodies[2].ay);
+                assert_eq!(-93.65361, bodies[2].ax);
+                assert_eq!(0.24906474, bodies[2].ay);
                 assert_eq!(0.0, bodies[2].az);
-                assert_eq!(-10.307066, bodies[3].ax);
-                assert_eq!(0.22826882, bodies[3].ay);
+                assert_eq!(-10.306465, bodies[3].ax);
+                assert_eq!(0.22826828, bodies[3].ay);
                 assert_eq!(0.0, bodies[3].az);
             }
             None => return,
@@ -240,17 +240,17 @@ mod tests {
                 for b in bodies.iter() {
                     println!("{}, {}, {}", b.ax, b.ay, b.az);
                 }
-                assert_eq!(0.33838835, bodies[0].ax);
-                assert_eq!(0.33838835, bodies[0].ay, );
+                assert_eq!(0.3383876, bodies[0].ax);
+                assert_eq!(0.3383876, bodies[0].ay, );
                 assert_eq!(0.0, bodies[0].az);
-                assert_eq!(0.33838835, bodies[1].ax);
-                assert_eq!(-0.33838835, bodies[1].ay, );
+                assert_eq!(0.3383876, bodies[1].ax);
+                assert_eq!(-0.3383876, bodies[1].ay, );
                 assert_eq!(0.0, bodies[1].az);
-                assert_eq!(-0.33838835, bodies[2].ax);
-                assert_eq!(-0.33838835, bodies[2].ay);
+                assert_eq!(-0.3383876, bodies[2].ax);
+                assert_eq!(-0.3383876, bodies[2].ay);
                 assert_eq!(0.0, bodies[2].az);
-                assert_eq!(-0.33838835, bodies[3].ax);
-                assert_eq!(0.33838835, bodies[3].ay);
+                assert_eq!(-0.3383876, bodies[3].ax);
+                assert_eq!(0.3383876, bodies[3].ay);
                 assert_eq!(0.0, bodies[3].az);
             }
             None => return,
