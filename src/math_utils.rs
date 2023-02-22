@@ -64,6 +64,6 @@ pub fn get_dt(bodies: &Vec<Body>) -> Real {
         dt[i] = (softening / a_mag).sqrt();
     }
     min_dt = dt.iter().fold(Real::INFINITY, |ai, &bi| ai.min(bi));
-    println!("min_dt is {:.32}", min_dt);
+    // println!("min_dt is {:.32}", min_dt);
     return min_dt;
 }

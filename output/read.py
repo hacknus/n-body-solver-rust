@@ -79,7 +79,7 @@ while True:
         else:
             for i in range(len(df)):
                 planets[i].add(df.loc[i])
-    j += 1
+    j += 10
 if j == 0:
     print("no files found, exiting...")
     exit()
