@@ -32,12 +32,13 @@ fn main() {
     println!("starting calculation...");
     let start = Instant::now();
     // calculate first forces, in order to get initial dt
-    calc_direct_force(&mut bodies);
+    // calc_direct_force(&mut bodies);
+    dt = 60.0 * 60.0 * 24.0;
 
     for step in 0..steps {
-        dt = get_dt(&bodies);
-        dt = 60.0 * 60.0 * 24.0;
-        t += dt;
+        // dt = get_dt(&bodies);
+        // dt = 60.0 * 60.0 * 24.0;
+        // t += dt;
         leapfrog(&mut bodies, dt);
         // println!("calculating step {} at time t+{:.5}", step, t);
         // if step % 10 == 0 {
@@ -47,5 +48,6 @@ fn main() {
         //     }
         // }
     }
-    println!("runtime: {:?}", start.elapsed());
+    let time_passed = start.elapsed();
+    println!("runtime: {:?}", time_passed);
 }
