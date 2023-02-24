@@ -9,43 +9,28 @@ use crate::body::Body;
 use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
 
-type Real = f32;
+type Real = f64;
 
 fn main() {
     println!("Let's calculate some orbits! ");
     let init_start = Instant::now();
 
-    let args: Vec<String> = env::args().collect();
-    let path = &args[1];
-    let steps = &args[2].parse::<u32>().unwrap();
-    let mut bodies: Vec<Body>;
+    let (masses, mut x, mut y, mut z, mut vx, mut vy, mut vz) = read_csv("solar_jfc.dat").unwrap();
 
-    bodies = match read_csv(path) {
-        Err(e) => panic!("Problem opening the file: {:?}", e),
-        Ok(b) => b,
-    };
-
-    let mut dt: Real;
-    let mut t: Real = 0.0;
+    let mut ax = vec![0.0; x.len()];
+    let mut ay = vec![0.0; x.len()];
+    let mut az = vec![0.0; x.len()];
+    let mut dt = 60.0 * 60.0 * 24.0;
+    let steps = 100;
     println!("init time: {:?}", init_start.elapsed());
 
     println!("starting calculation...");
     let start = Instant::now();
     // calculate first forces, in order to get initial dt
-    calc_direct_force(&mut bodies);
 
-    for step in 0..*steps {
-        dt = get_dt(&bodies);
-        dt = 60.0 * 60.0 * 24.0;
-        t += dt;
-        leapfrog(&mut bodies, dt);
-        println!("calculating step {} at time t+{:.5}", step, t);
-        if step % 10 == 0 {
-            match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
-                Err(e) => panic!("Problem writing the output file: {:?}", e),
-                Ok(()) => (),
-            }
-        }
+    for _step in 0..steps {
+        leapfrog(&masses, &mut x, &mut y, &mut z, &mut vx, &mut vy, &mut vz, &mut ax, &mut ay, &mut az, dt);
     }
-    println!("runtime: {:?}", start.elapsed());
+    let elapsed = start.elapsed();
+    println!("runtime: {:?}", elapsed);
 }

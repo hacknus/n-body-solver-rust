@@ -3,53 +3,65 @@ use crate::body::Acc;
 use crate::body::EMPTY_ACC;
 use crate::Real;
 
-pub fn calc_direct_force(bodies: &mut Vec<Body>) {
+pub fn calc_direct_force(
+    masses: &Vec<Real>,
+    x: &mut Vec<Real>,
+    y: &mut Vec<Real>,
+    z: &mut Vec<Real>,
+    ax: &mut Vec<Real>,
+    ay: &mut Vec<Real>,
+    az: &mut Vec<Real>,
+) {
     let g: Real = 6.67408e-11;
-    let softening: Real = 0.0001;
-    let mut x: Real;
-    let mut y: Real;
-    let mut z: Real;
+    let mut rxi: Real;
+    let mut ryi: Real;
+    let mut rzi: Real;
     let mut r: Real;
     let mut temp: Real;
 
-    let mut a: Vec<Acc> = vec![EMPTY_ACC; bodies.len()];
-    for (i, (bi, acci)) in bodies.iter().zip(a.iter_mut()).enumerate() {
-        for (j, bj) in bodies.iter().enumerate() {
+    for i in 0..x.len() {
+        for j in 0..x.len() {
             if i != j {
-                x = bj.x - bi.x;
-                y = bj.y - bi.y;
-                z = bj.z - bi.z;
-                r = (x * x + y * y + z * z + softening * softening).sqrt();
-                temp = g * bj.m / r.powi(3);
-                acci.x += temp * x;
-                acci.y += temp * y;
-                acci.z += temp * z;
+                rxi = x[j] - x[i];
+                ryi = y[j] - y[i];
+                rzi = z[j] - z[i];
+                r = (rxi * rxi + ryi * ryi + rzi * rzi).sqrt();
+                temp = g * masses[j] / r.powi(3);
+                ax[i] += temp * rxi;
+                ay[i] += temp * ryi;
+                az[i] += temp * rzi;
             }
         }
     }
-    for (i, (bi, acci)) in bodies.iter_mut().zip(a.iter()).enumerate() {
-        bi.ax = acci.x;
-        bi.ay = acci.y;
-        bi.az = acci.z;
-    }
 }
 
-pub fn leapfrog(bodies: &mut Vec<Body>, dt: Real) {
-    for bi in bodies.iter_mut() {
-        bi.x = bi.x + bi.vx * 0.5 * dt;
-        bi.y = bi.y + bi.vy * 0.5 * dt;
-        bi.z = bi.z + bi.vz * 0.5 * dt;
+pub fn leapfrog(
+    masses: &Vec<Real>,
+    x: &mut Vec<Real>,
+    y: &mut Vec<Real>,
+    z: &mut Vec<Real>,
+    vx: &mut Vec<Real>,
+    vy: &mut Vec<Real>,
+    vz: &mut Vec<Real>,
+    ax: &mut Vec<Real>,
+    ay: &mut Vec<Real>,
+    az: &mut Vec<Real>,
+    dt: Real) {
+    for (xi, (yi, (zi, (vxi, (vyi, vzi))))) in x.iter_mut().zip(y.iter_mut().zip(z.iter_mut().zip(vx.iter().zip(vy.iter().zip(vz.iter()))))) {
+        *xi += *vxi * 0.5 * dt;
+        *yi += *vyi * 0.5 * dt;
+        *zi += *vzi * 0.5 * dt;
     }
 
-    calc_direct_force(bodies);
+    calc_direct_force(masses, x, y, z, ax, ay, az);
 
-    for bi in bodies.iter_mut() {
-        bi.vx = bi.vx + bi.ax * dt;
-        bi.vy = bi.vy + bi.ay * dt;
-        bi.vz = bi.vz + bi.az * dt;
-        bi.x = bi.x + bi.vx * 0.5 * dt;
-        bi.y = bi.y + bi.vy * 0.5 * dt;
-        bi.z = bi.z + bi.vz * 0.5 * dt;
+    for (xi, (yi, (zi, (vxi, (vyi, (vzi, (axi, (ayi, (azi))))))))) in x.iter_mut().zip(y.iter_mut().zip(z.iter_mut().zip(vx.iter_mut().zip(vy.iter_mut().zip(vz.iter_mut().zip(ax.iter().zip(ay.iter().zip(az.iter())))))))) {
+        *vxi += axi * dt;
+        *vyi += ayi * dt;
+        *vzi += azi * dt;
+        *xi += *vxi * 0.5 * dt;
+        *yi += *vyi * 0.5 * dt;
+        *zi += *vzi * 0.5 * dt;
     }
 }
 

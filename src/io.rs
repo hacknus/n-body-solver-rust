@@ -9,44 +9,46 @@ use crate::Real;
 pub fn write_file(path: &str, bodies: &Vec<Body>) -> std::io::Result<()> {
     let mut file = File::create(path)?;
     for bi in bodies.iter(){
-        file.write_f64::<LittleEndian>(bi.x as f64)?;
-        file.write_f64::<LittleEndian>(bi.y as f64)?;
-        file.write_f64::<LittleEndian>(bi.z as f64)?;
-        file.write_f64::<LittleEndian>(bi.vx as f64)?;
-        file.write_f64::<LittleEndian>(bi.vy as f64)?;
-        file.write_f64::<LittleEndian>(bi.vz as f64)?;
-        file.write_f64::<LittleEndian>(bi.ax as f64)?;
-        file.write_f64::<LittleEndian>(bi.ay as f64)?;
-        file.write_f64::<LittleEndian>(bi.az as f64)?;
+        file.write_f64::<LittleEndian>(f64::from(bi.x))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.y))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.z))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.vx))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.vy))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.vz))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.ax))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.ay))?;
+        file.write_f64::<LittleEndian>(f64::from(bi.az))?;
     }
     Ok(())
 }
 
-pub fn read_csv(path: &str) -> Result<Vec<Body>, Box<dyn Error>> {
+pub fn read_csv(path: &str) -> Result<(Vec<Real>,Vec<Real>,Vec<Real>,Vec<Real>,Vec<Real>,Vec<Real>,Vec<Real>), Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
     let mut rdr = csv::Reader::from_path(path)?;
-    let mut bodies: Vec<Body> = Vec::new();
     let au: Real = 1.5e11;
     let m_sol: Real = 2e30;
     let day: Real = 24.0 * 60.0 * 60.0;
+
+    let mut masses = vec![];
+    let mut x = vec![];
+    let mut y = vec![];
+    let mut z = vec![];
+    let mut vx = vec![];
+    let mut vy = vec![];
+    let mut vz = vec![];
+
     for result in rdr.records() {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.
         let record = result?;
-        let new_body = Body {
-            m: record[1].parse::<Real>().unwrap() * m_sol,
-            x: record[2].parse::<Real>().unwrap() * au,
-            y: record[3].parse::<Real>().unwrap() * au,
-            z: record[4].parse::<Real>().unwrap() * au,
-            vx: record[5].parse::<Real>().unwrap() * au / day,
-            vy: record[6].parse::<Real>().unwrap() * au / day,
-            vz: record[7].parse::<Real>().unwrap() * au / day,
-            ax: 0.0,
-            ay: 0.0,
-            az: 0.0,
-            softening: 0.001,
-        };
-        bodies.push(new_body);
+        masses.push(record[1].parse::<Real>().unwrap() * m_sol);
+        x.push(record[2].parse::<Real>().unwrap() * au);
+        y.push(record[3].parse::<Real>().unwrap() * au);
+        z.push(record[4].parse::<Real>().unwrap() * au);
+        vx.push(record[5].parse::<Real>().unwrap() * au / day);
+        vy.push(record[6].parse::<Real>().unwrap() * au / day);
+        vz.push(record[7].parse::<Real>().unwrap() * au / day);
+
     }
-    return Ok(bodies);
+    return Ok((masses, x, y, z, vx, vy, vz));
 }
