@@ -3,9 +3,7 @@ use crate::body::Acc;
 use crate::body::EMPTY_ACC;
 use crate::Real;
 
-pub fn calc_direct_force(bodies: &mut Vec<Body>) {
-    let g: Real = 6.67408e-11;
-    let softening: Real = 0.0001;
+pub fn calc_direct_force(bodies: &mut Vec<Body>, g: &Real) {
     let mut x: Real;
     let mut y: Real;
     let mut z: Real;
@@ -19,7 +17,7 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
                 x = bj.x - bi.x;
                 y = bj.y - bi.y;
                 z = bj.z - bi.z;
-                r = (x * x + y * y + z * z + softening * softening).sqrt();
+                r = (x * x + y * y + z * z).sqrt();
                 temp = g * bj.m / r.powi(3);
                 acci.x += temp * x;
                 acci.y += temp * y;
@@ -34,14 +32,14 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>) {
     }
 }
 
-pub fn leapfrog(bodies: &mut Vec<Body>, dt: Real) {
+pub fn leapfrog(bodies: &mut Vec<Body>, dt: &Real, g: &Real) {
     for bi in bodies.iter_mut() {
         bi.x = bi.x + bi.vx * 0.5 * dt;
         bi.y = bi.y + bi.vy * 0.5 * dt;
         bi.z = bi.z + bi.vz * 0.5 * dt;
     }
 
-    calc_direct_force(bodies);
+    calc_direct_force(bodies, g);
 
     for bi in bodies.iter_mut() {
         bi.vx = bi.vx + bi.ax * dt;
