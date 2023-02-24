@@ -1,7 +1,10 @@
+use std::iter::Sum;
 use crate::Real;
+use std::ops::{Add, Mul, Sub};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Body {
+    pub id: usize,
     pub m: Real,
     pub x: Real,
     pub y: Real,
@@ -12,14 +15,69 @@ pub struct Body {
     pub ax: Real,
     pub ay: Real,
     pub az: Real,
-    pub softening: Real,
 }
 
-#[derive(Debug, Clone)]
-pub struct Acc {
-    pub x : Real,
-    pub y : Real,
-    pub z : Real,
+#[derive(Debug, Clone, Copy)]
+pub struct Vector {
+    pub x: Real,
+    pub y: Real,
+    pub z: Real,
 }
 
-pub const EMPTY_ACC: Acc = Acc { x: 0.0, y: 0.0, z: 0.0 };
+impl Vector {
+    pub fn norm(&self) -> Real {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+}
+
+impl Add for &Vector {
+    type Output = Vector;
+    fn add(self, v: &Vector) -> Vector {
+        Vector {
+            x: self.x + v.x,
+            y: self.y + v.y,
+            z: self.z + v.z,
+        }
+    }
+}
+
+impl Sub for &Vector {
+    type Output = Vector;
+    fn sub(self, v: &Vector) -> Vector {
+        Vector {
+            x: self.x - v.x,
+            y: self.y - v.y,
+            z: self.z - v.z,
+        }
+    }
+}
+
+impl Mul<Real> for Vector {
+    type Output = Vector;
+    fn mul(self, a: Real) -> Vector {
+        Vector {
+            x: self.x * a,
+            y: self.y * a,
+            z: self.z * a,
+        }
+    }
+}
+
+impl Sum<Self> for Vector {
+    fn sum<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = Self>,
+    {
+        iter.fold(Self { x: 0.0, y: 0.0, z :0.0 }, |a, b| Self {
+            x: a.x + b.x,
+            y: a.y + b.y,
+            z: a.z + b.z,
+        })
+    }
+}
+
+impl PartialEq for Vector {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}

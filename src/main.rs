@@ -1,15 +1,15 @@
 mod body;
-mod math_utils;
 mod io;
+mod math_utils;
 
 use std::env;
 use std::time::Instant;
 
 use crate::body::Body;
-use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
+use crate::math_utils::{calc_direct_force, get_dt, leapfrog};
 
-type Real = f32;
+type Real = f64;
 
 fn mean(data: &[f32]) -> Option<f32> {
     let sum = data.iter().sum::<f32>() as f32;
@@ -24,15 +24,19 @@ fn mean(data: &[f32]) -> Option<f32> {
 fn std(data: &[f32]) -> Option<f32> {
     match (mean(data), data.len()) {
         (Some(data_mean), count) if count > 0 => {
-            let variance = data.iter().map(|value| {
-                let diff = data_mean - (*value as f32);
+            let variance = data
+                .iter()
+                .map(|value| {
+                    let diff = data_mean - (*value as f32);
 
-                diff * diff
-            }).sum::<f32>() / count as f32;
+                    diff * diff
+                })
+                .sum::<f32>()
+                / count as f32;
 
             Some(variance.sqrt())
-        },
-        _ => None
+        }
+        _ => None,
     }
 }
 
@@ -40,7 +44,6 @@ fn main() {
     println!("Let's calculate some orbits! ");
     let init_start = Instant::now();
 
-    let args: Vec<String> = env::args().collect();
     let path = "solar_jfc.dat";
     let steps = 100;
     let mut bodies: Vec<Body>;
@@ -50,14 +53,14 @@ fn main() {
         Ok(b) => b,
     };
 
-    let mut dt = 60.0 * 60.0 * 24.0;
+    let dt = 60.0 * 60.0 * 24.0;
     let g: Real = 6.67408e-11;
 
     println!("init time: {:?}", init_start.elapsed());
 
     println!("starting calculation...");
     let mut times = vec![];
-    for i in 0..10 {
+    for i in 0..2198 {
         let start = Instant::now();
         // calculate first forces, in order to get initial dt
         // calc_direct_force(&mut bodies);
@@ -75,7 +78,12 @@ fn main() {
             // }
         }
         let time_passed = start.elapsed();
-        times.push(time_passed.as_micros() as f32/ 1000.0);
+        times.push(time_passed.as_micros() as f32 / 1000.0);
     }
-    println!("runtime: {:.4}ms +/- {:.4}ms",mean(&times).unwrap(), std(&times).unwrap() );
+    write_file("jura_test.bin", &bodies).expect("failed to save file");
+    println!(
+        "runtime: {:.4}ms +/- {:.4}ms",
+        mean(&times).unwrap(),
+        std(&times).unwrap()
+    );
 }
