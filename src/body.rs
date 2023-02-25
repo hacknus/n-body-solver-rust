@@ -79,11 +79,7 @@ impl Sum<Self> for Vector {
         where
             I: Iterator<Item = Self>,
     {
-        iter.fold(Self { x: 0.0, y: 0.0, z :0.0 }, |a, b| Self {
-            x: a.x + b.x,
-            y: a.y + b.y,
-            z: a.z + b.z,
-        })
+        iter.fold(Self { x: 0.0, y: 0.0, z :0.0 }, |a, b| &a + &b)
     }
 }
 

@@ -55,6 +55,14 @@ fn main() {
 
     let dt = 60.0 * 60.0 * 24.0;
     let g: Real = 6.67408e-11;
+    for step in 0..steps {
+        // dt = get_dt(&bodies);
+        // dt = 60.0 * 60.0 * 24.0;
+        // t += dt;
+        leapfrog(&mut bodies, &dt, &g);
+    }
+    write_file("jura_test.bin", &bodies).expect("failed to save file");
+
 
     println!("init time: {:?}", init_start.elapsed());
 
@@ -80,7 +88,6 @@ fn main() {
         let time_passed = start.elapsed();
         times.push(time_passed.as_micros() as f32 / 1000.0);
     }
-    write_file("jura_test.bin", &bodies).expect("failed to save file");
     println!(
         "runtime: {:.4}ms +/- {:.4}ms",
         mean(&times).unwrap(),
