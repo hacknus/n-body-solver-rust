@@ -10,12 +10,21 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>, g: &Real) {
             bodies
                 .iter()
                 .map(|bj| {
+                    if bi.id != bj.id {
                     let r = Vector {
                         x: bj.x - bi.x,
                         y: bj.y - bi.y,
                         z: bj.z - bi.z,
                     };
                     r * *g * (bj.m / r.norm().powi(3))
+                } else {
+                        Vector {
+                            x: 0.0,
+                            y: 0.0,
+                            z: 0.0,
+                        }
+                    }
+
                 })
                 .sum::<Vector>()
         })
