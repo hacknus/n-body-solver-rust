@@ -1,6 +1,6 @@
 use std::iter::Sum;
 use crate::Real;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Body {
@@ -59,6 +59,17 @@ impl Mul<Real> for Vector {
             x: self.x * a,
             y: self.y * a,
             z: self.z * a,
+        }
+    }
+}
+
+impl Div<Real> for Vector {
+    type Output = Vector;
+    fn div(self, a: Real) -> Vector {
+        Vector {
+            x: self.x / a,
+            y: self.y / a,
+            z: self.z / a,
         }
     }
 }
