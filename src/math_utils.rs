@@ -1,4 +1,4 @@
-use crate::body::Body;
+use crate::body::{Body, EMPTY_VEC};
 use crate::body::Vector;
 use crate::Real;
 
@@ -17,11 +17,7 @@ pub fn calc_direct_force(bodies: &mut [Body], g: &Real) {
                         };
                         r * *g * bj.m / r.norm().powi(3)
                     } else {
-                        Vector {
-                            x: 0.0,
-                            y: 0.0,
-                            z: 0.0,
-                        }
+                        EMPTY_VEC
                     }
                 })
                 .sum::<Vector>()

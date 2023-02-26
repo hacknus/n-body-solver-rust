@@ -24,6 +24,8 @@ pub struct Vector {
     pub z: Real,
 }
 
+pub const EMPTY_VEC: Vector = Vector { x: 0.0, y: 0.0, z: 0.0 };
+
 impl Vector {
     pub fn norm(&self) -> Real {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
@@ -79,7 +81,7 @@ impl Sum<Self> for Vector {
         where
             I: Iterator<Item = Self>,
     {
-        iter.fold(Self { x: 0.0, y: 0.0, z :0.0 }, |a, b| &a + &b)
+        iter.fold(EMPTY_VEC, |a, b| &a + &b)
     }
 }
 
