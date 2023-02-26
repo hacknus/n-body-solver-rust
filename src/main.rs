@@ -59,7 +59,7 @@ fn main() {
         // dt = get_dt(&bodies);
         // dt = 60.0 * 60.0 * 24.0;
         // t += dt;
-        leapfrog(&mut bodies, &dt, &g);
+        leapfrog(&mut bodies, dt, g);
     }
     write_file("jura_test.bin", &bodies).expect("failed to save file");
 
@@ -76,7 +76,7 @@ fn main() {
             // dt = get_dt(&bodies);
             // dt = 60.0 * 60.0 * 24.0;
             // t += dt;
-            leapfrog(&mut bodies, &dt, &g);
+            leapfrog(&mut bodies, dt, g);
             // println!("calculating step {} at time t+{:.5}", step, t);
             // if step % 10 == 0 {
             //     match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {

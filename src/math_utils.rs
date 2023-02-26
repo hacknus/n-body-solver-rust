@@ -1,8 +1,8 @@
-use crate::body::{Body, EMPTY_VEC};
 use crate::body::Vector;
+use crate::body::{Body, EMPTY_VEC};
 use crate::Real;
 
-pub fn calc_direct_force(bodies: &mut [Body], g: &Real) {
+pub fn calc_direct_force(bodies: &mut [Body], g: Real) {
     let a = bodies
         .iter()
         .map(|bi| {
@@ -15,7 +15,8 @@ pub fn calc_direct_force(bodies: &mut [Body], g: &Real) {
                             y: bj.y - bi.y,
                             z: bj.z - bi.z,
                         };
-                        r * *g * bj.m / r.norm().powi(3)
+                        let norm = r.norm();
+                        r * g * bj.m / (norm * norm * norm)
                     } else {
                         EMPTY_VEC
                     }
@@ -31,7 +32,7 @@ pub fn calc_direct_force(bodies: &mut [Body], g: &Real) {
     }
 }
 
-pub fn leapfrog(bodies: &mut [Body], dt: &Real, g: &Real) {
+pub fn leapfrog(bodies: &mut [Body], dt: Real, g: Real) {
     for bi in bodies.iter_mut() {
         bi.x += bi.vx * 0.5 * dt;
         bi.y += bi.vy * 0.5 * dt;
