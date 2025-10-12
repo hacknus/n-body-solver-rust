@@ -1,237 +1,292 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d.axes3d as p3
-import matplotlib.animation as animation
-import sys
 import os
+
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
-
-file_name = "solar_system"
-
-class Planet:
-
-    def __init__(self, df):
-        self.x = [float(df["x"])]
-        self.y = [float(df["y"])]
-        self.z = [float(df["z"])]
-        # self.m = float(df["m"])
-        # self.dt = [float(df["dt"])]
-        # self.t = [float(df["t"])]
-        self.color = self.get_color()
-        self.color = "yellow"
-
-    def add(self, df):
-        self.x.append(float(df["x"]))
-        self.y.append(float(df["y"]))
-        self.z.append(float(df["z"]))
-        # self.dt.append(float(df["dt"]))
-        # self.t.append(float(df["t"]))
-
-    def get_color(self):
-        if self.y[0] > 0:
-            return "red"
-        else:
-            return "yellow"
+# Configuration
+file_name = "pebble_collapse"
+ThreeD = True  # Set to True for 3D visualization
+max_particles_to_display = 1000  # Limit for performance
+show_trails = False  # Set to False for better performance with many particles
+save_gif = False
+save_mp4 = True
+show_plot = True
+output_dir = "."  # Fixed output directory path
 
 
 def read_binary(path):
-    # path = "out_10.bin"
-    x = np.fromfile(path, dtype=np.float64)
+    """Read binary output files from the Rust simulation"""
+    try:
+        x = np.fromfile(path, dtype=np.float64)
+        # Each particle now has 11 values (including escaped flag)
+        x = x.reshape((x.shape[0] // 11, 11))
 
-    # (num_planets, num_params)
-    x = x.reshape((x.shape[0] // 9, 9))
+        d = {"x": x[:, 0],
+             "y": x[:, 1],
+             "z": x[:, 2],
+             "vx": x[:, 3],
+             "vy": x[:, 4],
+             "vz": x[:, 5],
+             "ax": x[:, 6],
+             "ay": x[:, 7],
+             "az": x[:, 8],
+             "radius": x[:, 9],
+             "escaped": x[:, 10]}
+        return pd.DataFrame(data=d)
+    except Exception as e:
+        print(f"Error reading file {path}: {e}")
+        return None
 
-    d = {"x": x[:, 0],
-         "y": x[:, 1],
-         "z": x[:, 2],
-         "vx": x[:, 3],
-         "vy": x[:, 4],
-         "vz": x[:, 5],
-         }
-    df = pd.DataFrame(data=d)
-    return df
 
-
-x = []
-y = []
-z = []
-
-planets = []
-
+# Find all output files
+frames = []
 j = 0
-
-ThreeD = False
-
 while True:
-    if not os.path.exists(f'out{j:05d}.dat'):
+    filepath = os.path.join(output_dir, f'out{j:05d}.dat')
+    if not os.path.exists(filepath):
         break
-    # print(f'reading out{j:05d}.dat')
-    master_file = f'out{j:05d}.dat'
+    frames.append(j)
+    j += 10  # Using step 10 since files are saved every 10 frames
 
-    # if j >= 100:
-    #     break
-    if j % 10 == 0:
-        df = read_binary(master_file)
-        if j == 0:
-            for i in range(len(df)):
-                planets.append(Planet(df.loc[i]))
-        else:
-            for i in range(len(df)):
-                planets[i].add(df.loc[i])
-    j += 1
-if j == 0:
-    print("no files found, exiting...")
+if len(frames) == 0:
+    print(f"No output files found in {output_dir}, exiting...")
     exit()
 else:
-    print("found {} files".format(j))
+    print(f"Found {len(frames)} output files")
 
-j = len(planets[0].x)
-planets = planets[::1]
-planets[1].color = "brown"
-planets[2].color = "orange"
-planets[3].color = "blue"
-planets[4].color = "red"
-planets[5].color = "brown"
-planets[6].color = "orange"
-planets[7].color = "deepskyblue"
-planets[8].color = "blue"
+# First, read all frames to track which particles ever escape
+all_data = []
+for frame_num in frames:
+    df = read_binary(os.path.join(output_dir, f'out{frame_num:05d}.dat'))
+    if df is not None:
+        all_data.append(df)
+    else:
+        print(f"Could not read frame {frame_num}")
 
-planets.reverse()
+if not all_data:
+    print("No valid data frames found")
+    exit()
 
-print("found {} objects".format(len(planets)))
+# Find particles that ever escape
+num_particles = len(all_data[0])
+ever_escaped = np.zeros(num_particles, dtype=bool)
 
-# plt.plot(range(len(planets[0].dt)), planets[0].dt)
-# plt.savefig("dt.png")
+for df in all_data:
+    ever_escaped = ever_escaped | (df["escaped"] > 0.5)
 
-fig = plt.figure()
+print(f"Total particles: {num_particles}")
+print(f"Particles that never escape: {np.sum(~ever_escaped)}")
 
-fig.set_size_inches(5, 5, True)
+# Create particle data structure for non-escaped particles
+class Particle:
+    def __init__(self, index, x, y, z, radius):
+        self.index = index
+        self.x = [float(x)]
+        self.y = [float(y)]
+        self.z = [float(z)]
+        self.radius = float(radius)  # Store radius for better visualization
+        # Determine color based on initial distance from center
+        dist = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+        self.color = dist
+
+    def add(self, x, y, z):
+        self.x.append(float(x))
+        self.y.append(float(y))
+        self.z.append(float(z))
+
+
+# Get indices of non-escaped particles
+non_escaped_indices = np.where(~ever_escaped)[0]
+
+# If too many particles, sample randomly for visualization
+if len(non_escaped_indices) > max_particles_to_display:
+    print(f"Limiting visualization to {max_particles_to_display} particles")
+    particle_indices = np.random.choice(non_escaped_indices, max_particles_to_display, replace=False)
+else:
+    particle_indices = non_escaped_indices
+
+# Initialize particles
+particles = []
+first_frame = all_data[0]
+for idx in particle_indices:
+    p = Particle(
+        idx,
+        first_frame["x"][idx],
+        first_frame["y"][idx],
+        first_frame["z"][idx],
+        first_frame["radius"][idx]
+    )
+    particles.append(p)
+
+# Add positions from remaining frames
+for df in all_data[1:]:
+    for particle in particles:
+        idx = particle.index
+        particle.add(df["x"][idx], df["y"][idx], df["z"][idx])
+
+# Normalize data for better visualization
+# Find overall min/max for plotting
+all_x_values = []
+all_y_values = []
+all_z_values = []
+
+for p in particles:
+    all_x_values.extend(p.x)
+    all_y_values.extend(p.y)
+    all_z_values.extend(p.z)
+
+x_min, x_max = min(all_x_values), max(all_x_values)
+y_min, y_max = min(all_y_values), max(all_y_values)
+z_min, z_max = min(all_z_values), max(all_z_values)
+
+# Setup plot
+fig = plt.figure(figsize=(10, 8))
 
 if ThreeD:
-    ax = p3.Axes3D(fig)
+    ax = fig.add_subplot(111, projection='3d')
 else:
     ax = fig.add_subplot(111)
 
-# ax.set_facecolor("black")
+# Create a custom colormap based on initial distance from center
+max_color = max(p.color for p in particles)
+min_color = min(p.color for p in particles)
+norm_colors = [(p.color - min_color) / (max_color - min_color) if max_color > min_color else 0.5 for p in particles]
 
-colors = ["yellow" for i in range(len(planets))]
+cmap = plt.cm.viridis
+colors = [cmap(c) for c in norm_colors]
 
+# Set up lines and points for animation
 if ThreeD:
-    lines = [ax.plot([], [], [], '-', linewidth=0.05, c=planet.color)[0]
-             for planet in planets]
-    pts = [ax.plot([], [], [], color=planet.color, marker=',', lw=0, markersize=0.5, linestyle="")[0]
-           for planet in planets]
+    if show_trails:
+        lines = [ax.plot([], [], [], '-', lw=0.3, color=colors[i], alpha=0.3)[0] for i in range(len(particles))]
+    else:
+        lines = []
+    pts = [ax.plot([], [], [], 'o', ms=3, color=colors[i])[0] for i in range(len(particles))]
 else:
-    lines = [ax.plot([], [], '-', linewidth=0.05, c=planet.color)[0]
-             for planet in planets]
-    pts = [ax.plot([], [], color=planet.color, marker='o', markersize=1, lw=0, linestyle="")[0]
-           for planet in planets]
+    if show_trails:
+        lines = [ax.plot([], [], '-', lw=0.3, color=colors[i], alpha=0.3)[0] for i in range(len(particles))]
+    else:
+        lines = []
+    pts = [ax.plot([], [], 'o', ms=3, color=colors[i])[0] for i in range(len(particles))]
 
-data = planets
+# Create time label
+time_label = ax.text2D(0.05, 0.95, "", transform=ax.transAxes) if ThreeD else ax.text(0.05, 0.95, "",
+                                                                                      transform=ax.transAxes)
 
 
 def init():
-    for line, pt in zip(lines, pts):
-        line.set_data([], [])
-        if ThreeD:
-            line.set_3d_properties([])
+    time_label.set_text('')
+    for pt in pts:
         pt.set_data([], [])
         if ThreeD:
             pt.set_3d_properties([])
-    return lines + pts
+
+    if show_trails:
+        for line in lines:
+            line.set_data([], [])
+            if ThreeD:
+                line.set_3d_properties([])
+
+    return pts + (lines if show_trails else []) + [time_label]
 
 
 def animate(i):
-    print("processing step: ", i)
-    x = []
-    y = []
-    z = []
-    counter = 0
-    # print("T + {}".format(planets[0].t[i]))
-    # ax.set_title("T + {:.4f}".format(planets[0].t[i]), color="white", fontsize=4)
-    for line, pt, planet in zip(lines, pts, data):
+    print(f"Processing frame: {i + 1}/{min(len(particles[0].x), num_frames)}")
+    time_label.set_text(f"Time step: {i}")
 
-        x = planet.x[i]  # planet[0][i]
-        y = planet.y[i]  # planet[1][i]
-        z = planet.z[i]  # planet[2][i]
+    try:
+        if show_trails:
+            for j, (line, pt, particle) in enumerate(zip(lines, pts, particles)):
+                if i < len(particle.x):
+                    x = particle.x[i]
+                    y = particle.y[i]
+                    z = particle.z[i] if ThreeD else 0
 
-        xline = planet.x[:i]  # planet[0][:i]
-        yline = planet.y[:i]  # planet[1][:i]
-        zline = planet.z[:i]  # planet[2][:i]
+                    xline = particle.x[:i + 1]
+                    yline = particle.y[:i + 1]
+                    zline = particle.z[:i + 1] if ThreeD else []
 
-        pt.set_data(x, y)
-        if ThreeD:
-            pt.set_3d_properties(z)
+                    pt.set_data([x], [y])
+                    if ThreeD:
+                        pt.set_3d_properties([z])
 
-        line.set_data(xline, yline)
-        if ThreeD:
-            line.set_3d_properties(zline)
-        counter += 1
+                    line.set_data(xline, yline)
+                    if ThreeD:
+                        line.set_3d_properties(zline)
+        else:
+            for j, (pt, particle) in enumerate(zip(pts, particles)):
+                if i < len(particle.x):
+                    x = particle.x[i]
+                    y = particle.y[i]
+                    z = particle.z[i] if ThreeD else 0
+
+                    pt.set_data([x], [y])
+                    if ThreeD:
+                        pt.set_3d_properties([z])
+    except Exception as e:
+        print(f"Error in animation frame {i}: {e}")
+
+    return pts + (lines if show_trails else []) + [time_label]
 
 
-AU = 1.5e11
+# Calculate appropriate axis limits with some margin
+all_x = [p.x for p in particles]
+all_y = [p.y for p in particles]
+all_z = [p.z for p in particles]
 
-size = 1.6 * AU
+flat_x = [item for sublist in all_x for item in sublist]
+flat_y = [item for sublist in all_y for item in sublist]
+flat_z = [item for sublist in all_z for item in sublist]
 
-com = np.zeros(3)
-m = 0
+x_range = max(flat_x) - min(flat_x)
+y_range = max(flat_y) - min(flat_y)
+z_range = max(flat_z) - min(flat_z) if ThreeD else 0
 
-# for planet in planets:
-#     com += np.mean(np.array([planet.x,planet.y,planet.z]),axis=1)*planet.m
-#     m += planet.m
+max_range = max(x_range, y_range, z_range) * 0.6
+margin = max_range * 0.2  # Add 20% margin
 
-# com /= m
+mid_x = (max(flat_x) + min(flat_x)) / 2
+mid_y = (max(flat_y) + min(flat_y)) / 2
+mid_z = (max(flat_z) + min(flat_z)) / 2 if ThreeD else 0
 
-print(com)
-
-# for planet in planets:
-#     planet.x += com[0]
-#     planet.y += com[1]
-#     planet.z += com[2]
-
-R = [np.linalg.norm([planet.x, planet.y, planet.z]) for planet in planets]
-size = np.max(R) / 4
-
-# size = 1
-
-plt.axis('off')
-# Setting the axes properties
-ax.set_xlim(-2, 2)
-ax.set_ylim(-2, 2)
-
-# ax.set_xlim(-1.5, 1)
-# ax.set_ylim(8, 10)
-
-x = np.max([abs(p.x[0]) for p in planets])
-y = np.max([abs(p.y[0]) for p in planets])
-ax.set_xlim(-1 * x, 1 * x)
-ax.set_ylim(-1 * y, 1 * y)
-
+# Set plot properties
+ax.set_xlim(mid_x - max_range - margin, mid_x + max_range + margin)
+ax.set_ylim(mid_y - max_range - margin, mid_y + max_range + margin)
 if ThreeD:
-    ax.set_zlim(-size, size)
-    ax.set_zlim(-10, 10)
+    ax.set_zlim(mid_z - max_range - margin, mid_z + max_range + margin)
 
-gif = False
-mp4 = False  # True
-show = True
+ax.set_xlabel('X (m)')
+ax.set_ylabel('Y (m)')
+if ThreeD:
+    ax.set_zlabel('Z (m)')
+ax.set_title('Pebble Cloud Collapse')
 
-ax.set_aspect('equal')
+# Create animation
+num_frames = min(len(particles[0].x), 200)  # Limit frames for performance
+print(f"Creating animation with {num_frames} frames")
 
-# ax.set_facecolor("black")
+ani = animation.FuncAnimation(
+    fig, animate, init_func=init,
+    frames=num_frames, interval=50, blit=True
+)
 
-ani = animation.FuncAnimation(fig, animate, init_func=init,
-                              frames=j, interval=1, blit=False)
+# Save and show animation
+if save_gif:
+    print("Saving GIF animation...")
+    ani.save(f'{file_name}.gif', writer='pillow', fps=20, dpi=100)
 
-# save animation
-if gif:
-    print("saving gif...")
-    ani.save(f'{file_name}.gif', savefig_kwargs={'facecolor': 'black'}, writer='imagemagick', dpi=100)
-if mp4:
-    # needs ffmpeg to be installed
-    mywriter = animation.FFMpegWriter(fps=24)
-    print("saving mp4...")
-    ani.save(f'{file_name}.mp4', savefig_kwargs={'facecolor': 'black'}, writer=mywriter, dpi=600)
-if show:
-    print("showing")
+if save_mp4:
+    print("Saving MP4 animation...")
+    try:
+        # Higher quality for final render
+        writer = animation.FFMpegWriter(fps=30, bitrate=3000)
+        ani.save(f'{file_name}.mp4', writer=writer, dpi=150)
+    except Exception as e:
+        print(f"Error saving MP4: {e}")
+        print("Make sure FFmpeg is installed and in your PATH")
+
+if show_plot:
+    plt.tight_layout()
     plt.show()

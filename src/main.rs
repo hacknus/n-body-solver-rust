@@ -6,8 +6,15 @@ use std::env;
 use std::time::Instant;
 
 use crate::body::Body;
-use crate::math_utils::{leapfrog, get_dt, calc_direct_force};
 use crate::io::{read_csv, write_file};
+
+// In main.rs
+// Add to the imports:
+use std::collections::HashMap;
+use crate::body::Agglomerate;
+use crate::math_utils::{leapfrog, get_dt, calc_direct_force, detect_and_handle_collisions, update_agglomerates, synchronize_agglomerates, check_escaped_particles};
+
+
 
 use mpi::traits::*;
 use body::EMPTY_BODY;
@@ -70,12 +77,25 @@ fn main() {
         world.process_at_rank(proc).broadcast_into(&mut bodies[ai..bi]);
     }
 
+    // In the main function, before the loop:
+    let mut agglomerates: HashMap<i32, Agglomerate> = HashMap::new();
+    let mut next_agglomerate_id: i32 = 0;
+
     for step in 0..steps {
-        // dt = get_dt(&bodies, a, b, world);
-        dt = 60.0 * 60.0 * 24.0;
+        // dt = get_dt(&bodies, a, b, &world);
+        dt = 60.0 * 60.0 * 24.0 * 1000.0;
         t += dt;
-        leapfrog(&mut bodies, dt, a, b, world);
-        println!("calculating step {} at time t+{:.5}", step, t);
+        leapfrog(&mut bodies, dt, a, b, &world);
+        // println!("calculating step {} at time t+{:.5}", step, t);
+
+        check_escaped_particles(&mut bodies, a, b);
+
+        // Inside the step loop, after leapfrog:
+        detect_and_handle_collisions(&mut bodies, &mut agglomerates, &mut next_agglomerate_id, a, b);
+
+        synchronize_agglomerates(&bodies, &mut agglomerates, &mut next_agglomerate_id, &world);
+
+        update_agglomerates(&mut bodies, &mut agglomerates);
 
         if (rank == 0) && (step % 10 == 0) {
             match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
@@ -83,7 +103,7 @@ fn main() {
                 Ok(()) => (),
             }
         }
-        println!("step: {step} on rank {rank}.");
+        // println!("step: {step} on rank {rank}.");
     }
 
     if rank == 0 {
