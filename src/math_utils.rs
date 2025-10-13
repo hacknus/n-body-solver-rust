@@ -7,6 +7,58 @@ use std::collections::HashMap;
 const VELOCITY_THRESHOLD: Real = 50.0; // m/s - threshold for sticking vs bouncing
 const COEFFICIENT_OF_RESTITUTION: Real = 0.8; // Elasticity for bouncing collisions
 
+
+/// Calculate adhesion force between particles in the same agglomerate
+/// This prevents agglomerated particles from being pulled apart easily
+pub fn calc_adhesion_force(bodies: &mut Vec<Body>, lower: usize, upper: usize, adhesion_strength: Real) {
+    for i in lower..upper {
+        if bodies[i].escaped || bodies[i].agglomerate_id < 0 {
+            continue; // Skip free particles and escaped ones
+        }
+
+        let agg_id = bodies[i].agglomerate_id;
+
+        for j in 0..bodies.len() {
+            if i == j || bodies[j].agglomerate_id != agg_id || bodies[j].escaped {
+                continue; // Only interact with same agglomerate
+            }
+
+            let dx = bodies[j].x - bodies[i].x;
+            let dy = bodies[j].y - bodies[i].y;
+            let dz = bodies[j].z - bodies[i].z;
+
+            let distance_squared = dx * dx + dy * dy + dz * dz;
+            let distance = distance_squared.sqrt();
+
+            // Avoid division by zero
+            if distance < 1e-10 {
+                continue;
+            }
+
+            // Contact distance (sum of radii)
+            let contact_distance = bodies[i].radius + bodies[j].radius;
+
+            // Apply adhesion within a certain range (e.g., 3x contact distance)
+            let adhesion_range = contact_distance * 3.0;
+
+            if distance > adhesion_range {
+                continue;
+            }
+
+            // Force magnitude increases as particles get farther apart
+            // F = adhesion_strength * (distance / range) to pull them back together
+            let normalized_distance = distance / adhesion_range;
+            let force_magnitude = adhesion_strength * normalized_distance / distance;
+
+            // Direction: pull particles together
+            bodies[i].ax += force_magnitude * dx;
+            bodies[i].ay += force_magnitude * dy;
+            bodies[i].az += force_magnitude * dz;
+        }
+    }
+}
+
+
 pub fn detect_and_handle_collisions(
     bodies: &mut Vec<Body>,
     agglomerates: &mut HashMap<i32, Agglomerate>,
@@ -29,17 +81,54 @@ pub fn detect_and_handle_collisions(
             let dy = bodies[j].y - bodies[i].y;
             let dz = bodies[j].z - bodies[i].z;
             let distance_squared = dx * dx + dy * dy + dz * dz;
+            let distance = distance_squared.sqrt();
             let combined_radius = bodies[i].radius + bodies[j].radius;
 
             // Check if collision occurred
-            if distance_squared <= combined_radius * combined_radius * 1.1 {
+            if distance_squared <= combined_radius * combined_radius {
+                // **NEW: Resolve overlap first by pushing particles apart**
+                if distance < combined_radius {
+                    let overlap = combined_radius - distance;
+
+                    // Avoid division by zero
+                    let safe_distance = if distance < 1e-10 { 1e-10 } else { distance };
+
+                    // Normalized direction vector from i to j
+                    let nx = dx / safe_distance;
+                    let ny = dy / safe_distance;
+                    let nz = dz / safe_distance;
+
+                    // Calculate mass ratio for proportional separation
+                    let total_mass = bodies[i].m + bodies[j].m;
+                    let correction_i = overlap * bodies[j].m / total_mass;
+                    let correction_j = overlap * bodies[i].m / total_mass;
+
+                    // Move particles apart along the collision axis
+                    bodies[i].x -= nx * correction_i;
+                    bodies[i].y -= ny * correction_i;
+                    bodies[i].z -= nz * correction_i;
+
+                    bodies[j].x += nx * correction_j;
+                    bodies[j].y += ny * correction_j;
+                    bodies[j].z += nz * correction_j;
+                }
+
                 // Calculate relative velocity
                 let dvx = bodies[j].vx - bodies[i].vx;
                 let dvy = bodies[j].vy - bodies[i].vy;
                 let dvz = bodies[j].vz - bodies[i].vz;
 
-                // Project relative velocity onto collision normal
-                let distance = distance_squared.sqrt();
+                // Recalculate normal after position correction
+                let dx = bodies[j].x - bodies[i].x;
+                let dy = bodies[j].y - bodies[i].y;
+                let dz = bodies[j].z - bodies[i].z;
+                let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+                // Avoid division by zero
+                if distance < 1e-10 {
+                    continue;
+                }
+
                 let nx = dx / distance;
                 let ny = dy / distance;
                 let nz = dz / distance;
@@ -54,18 +143,16 @@ pub fn detect_and_handle_collisions(
                 let rel_vel_magnitude = (dvx * dvx + dvy * dvy + dvz * dvz).sqrt();
 
                 if rel_vel_magnitude > VELOCITY_THRESHOLD {
-                    // Elastic collision (bouncing)
                     handle_elastic_collision(bodies, i, j);
-                    println!("Bouncing collision between particles {} and {}", i, j);
                 } else {
-                    // Inelastic collision (sticking)
-                    println!("Sticker collision between particles {} and {}", i, j);
                     handle_inelastic_collision(bodies, agglomerates, next_agg_id, i, j);
+                    println!("Sticking collision between particles {} and {}", i, j);
                 }
             }
         }
     }
 }
+
 
 fn handle_elastic_collision(bodies: &mut Vec<Body>, i: usize, j: usize) {
     let mi = bodies[i].m;
@@ -119,7 +206,7 @@ fn handle_elastic_collision(bodies: &mut Vec<Body>, i: usize, j: usize) {
     }
 }
 
-fn handle_inelastic_collision(
+pub fn handle_inelastic_collision(
     bodies: &mut Vec<Body>,
     agglomerates: &mut HashMap<i32, Agglomerate>,
     next_agg_id: &mut i32,
@@ -130,59 +217,200 @@ fn handle_inelastic_collision(
     let j_agg_id = bodies[j].agglomerate_id;
 
     if i_agg_id == -1 && j_agg_id == -1 {
-        // Both are free particles - create new agglomerate
+        // Both particles are free - create new agglomerate
         let new_id = *next_agg_id;
         *next_agg_id += 1;
-
-        let mut new_agg = Agglomerate::new(new_id, i, bodies);
-        new_agg.member_indices.push(j);
 
         bodies[i].agglomerate_id = new_id;
         bodies[j].agglomerate_id = new_id;
 
-        // Update velocities and properties for the new agglomerate
+        let mut new_agg = Agglomerate::new(new_id, i, bodies);
+        new_agg.member_indices.push(j);
         new_agg.update_properties(bodies);
 
-        // Apply forces to create rotation
-        apply_collision_rotation(bodies, &new_agg, i, j);
+        // Calculate center of mass velocity for conservation of momentum
+        let mi = bodies[i].m;
+        let mj = bodies[j].m;
+        let total_mass = mi + mj;
+
+        let com_vx = (bodies[i].vx * mi + bodies[j].vx * mj) / total_mass;
+        let com_vy = (bodies[i].vy * mi + bodies[j].vy * mj) / total_mass;
+        let com_vz = (bodies[i].vz * mi + bodies[j].vz * mj) / total_mass;
+
+        // Set both particles to have same velocity (the COM velocity)
+        bodies[i].vx = com_vx;
+        bodies[i].vy = com_vy;
+        bodies[i].vz = com_vz;
+
+        bodies[j].vx = com_vx;
+        bodies[j].vy = com_vy;
+        bodies[j].vz = com_vz;
+
+        // **Position particles at exactly 2×radius apart**
+        position_at_rest_length(bodies, i, j);
 
         agglomerates.insert(new_id, new_agg);
+
     } else if i_agg_id != -1 && j_agg_id == -1 {
         // i is in agglomerate, j is free
         if let Some(agg) = agglomerates.get_mut(&i_agg_id) {
+            // Add j to existing agglomerate
             agg.member_indices.push(j);
             bodies[j].agglomerate_id = i_agg_id;
 
-            // Update agglomerate properties
-            agg.update_properties(bodies);
+            // Update agglomerate properties including the new particle
+            let old_mass = agg.total_mass;
+            let new_mass = old_mass + bodies[j].m;
 
-            // Apply collision effects
-            apply_collision_to_agglomerate(bodies, agg, j);
-        } else {
-            // Create a new agglomerate if the expected one doesn't exist
-            let new_id = *next_agg_id;
-            *next_agg_id += 1;
+            // Update COM position
+            let new_com_x = (agg.com.0 * old_mass + bodies[j].x * bodies[j].m) / new_mass;
+            let new_com_y = (agg.com.1 * old_mass + bodies[j].y * bodies[j].m) / new_mass;
+            let new_com_z = (agg.com.2 * old_mass + bodies[j].z * bodies[j].m) / new_mass;
 
-            let mut new_agg = Agglomerate::new(new_id, i, bodies);
-            new_agg.member_indices.push(j);
+            // Update COM velocity
+            let new_vel_x = (agg.vel.0 * old_mass + bodies[j].vx * bodies[j].m) / new_mass;
+            let new_vel_y = (agg.vel.1 * old_mass + bodies[j].vy * bodies[j].m) / new_mass;
+            let new_vel_z = (agg.vel.2 * old_mass + bodies[j].vz * bodies[j].m) / new_mass;
 
-            bodies[i].agglomerate_id = new_id;
-            bodies[j].agglomerate_id = new_id;
+            agg.com = (new_com_x, new_com_y, new_com_z);
+            agg.vel = (new_vel_x, new_vel_y, new_vel_z);
+            agg.total_mass = new_mass;
 
-            new_agg.update_properties(bodies);
-            agglomerates.insert(new_id, new_agg);
+            // Set new particle to have same velocity as agglomerate
+            bodies[j].vx = new_vel_x;
+            bodies[j].vy = new_vel_y;
+            bodies[j].vz = new_vel_z;
+
+            // Also update all other particles in agglomerate
+            for &idx in &agg.member_indices {
+                bodies[idx].vx = new_vel_x;
+                bodies[idx].vy = new_vel_y;
+                bodies[idx].vz = new_vel_z;
+            }
+
+            // **Position particles at exactly 2×radius apart**
+            position_at_rest_length(bodies, i, j);
         }
     } else if i_agg_id == -1 && j_agg_id != -1 {
-        // Similar safe handling for this case
+        // i is free, j is in agglomerate
         if let Some(agg) = agglomerates.get_mut(&j_agg_id) {
-            // Existing code...
-        } else {
-            // Create new agglomerate...
+            agg.member_indices.push(i);
+            bodies[i].agglomerate_id = j_agg_id;
+
+            let old_mass = agg.total_mass;
+            let new_mass = old_mass + bodies[i].m;
+
+            let new_com_x = (agg.com.0 * old_mass + bodies[i].x * bodies[i].m) / new_mass;
+            let new_com_y = (agg.com.1 * old_mass + bodies[i].y * bodies[i].m) / new_mass;
+            let new_com_z = (agg.com.2 * old_mass + bodies[i].z * bodies[i].m) / new_mass;
+
+            let new_vel_x = (agg.vel.0 * old_mass + bodies[i].vx * bodies[i].m) / new_mass;
+            let new_vel_y = (agg.vel.1 * old_mass + bodies[i].vy * bodies[i].m) / new_mass;
+            let new_vel_z = (agg.vel.2 * old_mass + bodies[i].vz * bodies[i].m) / new_mass;
+
+            agg.com = (new_com_x, new_com_y, new_com_z);
+            agg.vel = (new_vel_x, new_vel_y, new_vel_z);
+            agg.total_mass = new_mass;
+
+            bodies[i].vx = new_vel_x;
+            bodies[i].vy = new_vel_y;
+            bodies[i].vz = new_vel_z;
+
+            for &idx in &agg.member_indices {
+                bodies[idx].vx = new_vel_x;
+                bodies[idx].vy = new_vel_y;
+                bodies[idx].vz = new_vel_z;
+            }
+
+            // **Position particles at exactly 2×radius apart**
+            position_at_rest_length(bodies, i, j);
         }
     } else if i_agg_id != j_agg_id {
-        // Safe handling for merging agglomerates...
+        // Merge two agglomerates - no direct positioning needed
+        // The spring forces will handle relative positioning within the merged agglomerate
+        if let (Some(agg_i), Some(agg_j)) = (agglomerates.get(&i_agg_id), agglomerates.get(&j_agg_id)) {
+            let mass_i = agg_i.total_mass;
+            let mass_j = agg_j.total_mass;
+            let total_mass = mass_i + mass_j;
+
+            let new_vel_x = (agg_i.vel.0 * mass_i + agg_j.vel.0 * mass_j) / total_mass;
+            let new_vel_y = (agg_i.vel.1 * mass_i + agg_j.vel.1 * mass_j) / total_mass;
+            let new_vel_z = (agg_i.vel.2 * mass_i + agg_j.vel.2 * mass_j) / total_mass;
+
+            let new_com_x = (agg_i.com.0 * mass_i + agg_j.com.0 * mass_j) / total_mass;
+            let new_com_y = (agg_i.com.1 * mass_i + agg_j.com.1 * mass_j) / total_mass;
+            let new_com_z = (agg_i.com.2 * mass_i + agg_j.com.2 * mass_j) / total_mass;
+
+            let j_members = agg_j.member_indices.clone();
+
+            if let Some(agg_i) = agglomerates.get_mut(&i_agg_id) {
+                agg_i.member_indices.extend(j_members.clone());
+                agg_i.com = (new_com_x, new_com_y, new_com_z);
+                agg_i.vel = (new_vel_x, new_vel_y, new_vel_z);
+                agg_i.total_mass = total_mass;
+
+                for &idx in &agg_i.member_indices {
+                    bodies[idx].agglomerate_id = i_agg_id;
+                    bodies[idx].vx = new_vel_x;
+                    bodies[idx].vy = new_vel_y;
+                    bodies[idx].vz = new_vel_z;
+                }
+            }
+
+            agglomerates.remove(&j_agg_id);
+        }
     }
 }
+
+/// Helper function to position two particles at exactly rest length (2×radius) apart
+fn position_at_rest_length(bodies: &mut Vec<Body>, i: usize, j: usize) {
+    let dx = bodies[j].x - bodies[i].x;
+    let dy = bodies[j].y - bodies[i].y;
+    let dz = bodies[j].z - bodies[i].z;
+    let current_distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+    if current_distance < 1e-10 {
+        return; // Avoid division by zero
+    }
+
+    let target_distance = bodies[i].radius + bodies[j].radius;
+
+    // Only apply correction if there's a significant difference
+    if (current_distance - target_distance).abs() < 1e-10 {
+        return;
+    }
+
+    // Normalized direction from i to j
+    let nx = dx / current_distance;
+    let ny = dy / current_distance;
+    let nz = dz / current_distance;
+
+    let mi = bodies[i].m;
+    let mj = bodies[j].m;
+    let total_mass = mi + mj;
+
+    // Displacement needed (positive = need to push apart, negative = need to pull together)
+    let displacement = target_distance - current_distance;
+
+    // How much each particle moves (proportional to OTHER particle's mass)
+    // Heavier particles move less
+    let move_i = displacement * mj / total_mass;
+    let move_j = displacement * mi / total_mass;
+
+    // Move along the normal direction
+    // If displacement > 0 (need to separate): i moves backward (-), j moves forward (+)
+    // If displacement < 0 (need to compress): i moves forward (+), j moves backward (-)
+    bodies[i].x += nx * move_i;
+    bodies[i].y += ny * move_i;
+    bodies[i].z += nz * move_i;
+
+    bodies[j].x += nx * move_j;
+    bodies[j].y += ny * move_j;
+    bodies[j].z += nz * move_j;
+}
+
+
+
 
 pub fn synchronize_agglomerates<C: mpi::traits::Communicator>(
     bodies: &Vec<Body>,
@@ -232,6 +460,14 @@ pub fn synchronize_agglomerates<C: mpi::traits::Communicator>(
 
 fn apply_collision_rotation(bodies: &mut Vec<Body>, agg: &Agglomerate, i: usize, j: usize) {
     let com = agg.com;
+    let mi = bodies[i].m;
+    let mj = bodies[j].m;
+    let total_mass = mi + mj;
+
+    // Properly calculate center of mass velocity using conservation of momentum
+    let com_vx = (bodies[i].vx * mi + bodies[j].vx * mj) / total_mass;
+    let com_vy = (bodies[i].vy * mi + bodies[j].vy * mj) / total_mass;
+    let com_vz = (bodies[i].vz * mi + bodies[j].vz * mj) / total_mass;
 
     // Position vectors relative to COM
     let r_i_x = bodies[i].x - com.0;
@@ -242,24 +478,24 @@ fn apply_collision_rotation(bodies: &mut Vec<Body>, agg: &Agglomerate, i: usize,
     let r_j_y = bodies[j].y - com.1;
     let r_j_z = bodies[j].z - com.2;
 
-    // Relative velocity
+    // Calculate relative velocity (for angular momentum)
     let dv_x = bodies[j].vx - bodies[i].vx;
     let dv_y = bodies[j].vy - bodies[i].vy;
     let dv_z = bodies[j].vz - bodies[i].vz;
 
-    // Calculate impulse at collision point (simplified)
-    let impact_factor = 0.5; // Adjust as needed
+    // Calculate angular momentum contribution
+    let impact_factor = 0.3; // Reduced to prevent excessive rotation
 
-    // Calculate angular momentum contribution (cross product of r_j and impulse)
-    let ang_mom_x = impact_factor * (r_j_y * dv_z - r_j_z * dv_y) * bodies[j].m;
-    let ang_mom_y = impact_factor * (r_j_z * dv_x - r_j_x * dv_z) * bodies[j].m;
-    let ang_mom_z = impact_factor * (r_j_x * dv_y - r_j_y * dv_x) * bodies[j].m;
+    // Angular momentum from relative motion
+    let ang_mom_x = impact_factor * (r_j_y * dv_z - r_j_z * dv_y) * mj;
+    let ang_mom_y = impact_factor * (r_j_z * dv_x - r_j_x * dv_z) * mj;
+    let ang_mom_z = impact_factor * (r_j_x * dv_y - r_j_y * dv_x) * mj;
 
-    // Calculate moment of inertia (simplified as spherical distribution)
-    let inertia = bodies[i].m * (r_i_x * r_i_x + r_i_y * r_i_y + r_i_z * r_i_z)
-        + bodies[j].m * (r_j_x * r_j_x + r_j_y * r_j_y + r_j_z * r_j_z);
+    // Calculate moment of inertia
+    let inertia = mi * (r_i_x * r_i_x + r_i_y * r_i_y + r_i_z * r_i_z)
+        + mj * (r_j_x * r_j_x + r_j_y * r_j_y + r_j_z * r_j_z);
 
-    // Set angular velocity (if inertia is non-zero)
+    // Set angular velocity if inertia is non-zero
     let mut ang_vel = (0.0, 0.0, 0.0);
     if inertia > 1e-10 {
         ang_vel = (
@@ -269,24 +505,26 @@ fn apply_collision_rotation(bodies: &mut Vec<Body>, agg: &Agglomerate, i: usize,
         );
     }
 
-    // Update velocities for both particles to match agglomerate velocity
-    bodies[i].vx = agg.vel.0;
-    bodies[i].vy = agg.vel.1;
-    bodies[i].vz = agg.vel.2;
+    // Update velocities to match COM velocity first
+    bodies[i].vx = com_vx;
+    bodies[i].vy = com_vy;
+    bodies[i].vz = com_vz;
 
-    bodies[j].vx = agg.vel.0;
-    bodies[j].vy = agg.vel.1;
-    bodies[j].vz = agg.vel.2;
+    bodies[j].vx = com_vx;
+    bodies[j].vy = com_vy;
+    bodies[j].vz = com_vz;
 
-    // Add rotational component to velocities
-    bodies[i].vx += ang_vel.1 * r_i_z - ang_vel.2 * r_i_y;
-    bodies[i].vy += ang_vel.2 * r_i_x - ang_vel.0 * r_i_z;
-    bodies[i].vz += ang_vel.0 * r_i_y - ang_vel.1 * r_i_x;
+    // Add rotational component with a smaller factor to prevent excessive speeds
+    let rot_scale = 0.7; // Dampening factor for rotation
+    bodies[i].vx += rot_scale * (ang_vel.1 * r_i_z - ang_vel.2 * r_i_y);
+    bodies[i].vy += rot_scale * (ang_vel.2 * r_i_x - ang_vel.0 * r_i_z);
+    bodies[i].vz += rot_scale * (ang_vel.0 * r_i_y - ang_vel.1 * r_i_x);
 
-    bodies[j].vx += ang_vel.1 * r_j_z - ang_vel.2 * r_j_y;
-    bodies[j].vy += ang_vel.2 * r_j_x - ang_vel.0 * r_j_z;
-    bodies[j].vz += ang_vel.0 * r_j_y - ang_vel.1 * r_j_x;
+    bodies[j].vx += rot_scale * (ang_vel.1 * r_j_z - ang_vel.2 * r_j_y);
+    bodies[j].vy += rot_scale * (ang_vel.2 * r_j_x - ang_vel.0 * r_j_z);
+    bodies[j].vz += rot_scale * (ang_vel.0 * r_j_y - ang_vel.1 * r_j_x);
 }
+
 
 fn apply_collision_to_agglomerate(bodies: &mut Vec<Body>, agg: &Agglomerate, free_idx: usize) {
     // Update free particle to match agglomerate velocity
@@ -423,38 +661,79 @@ fn apply_agglomerate_collision(
 }
 
 pub fn update_agglomerates(bodies: &mut Vec<Body>, agglomerates: &mut HashMap<i32, Agglomerate>) {
-    // Update positions of particles in agglomerates based on rotation and translation
-    for (_, agg) in agglomerates.iter_mut() {
-        agg.update_properties(bodies);
+    // Get a safe list of agglomerate IDs to avoid borrow checker issues
+    let agg_ids: Vec<i32> = agglomerates.keys().cloned().collect();
 
-        let (com_x, com_y, com_z) = agg.com;
-        let (vel_x, vel_y, vel_z) = agg.vel;
-        let (ang_x, ang_y, ang_z) = agg.ang_vel;
+    for agg_id in agg_ids {
+        if let Some(agg) = agglomerates.get_mut(&agg_id) {
+            // Recalculate COM and velocity
+            let mut total_mass = 0.0;
+            let mut com_x = 0.0;
+            let mut com_y = 0.0;
+            let mut com_z = 0.0;
+            let mut vel_x = 0.0;
+            let mut vel_y = 0.0;
+            let mut vel_z = 0.0;
 
-        for &idx in &agg.member_indices {
-            // Calculate particle position relative to COM
-            let rel_x = bodies[idx].x - com_x;
-            let rel_y = bodies[idx].y - com_y;
-            let rel_z = bodies[idx].z - com_z;
+            // Filter out invalid indices to prevent segfaults
+            let valid_indices: Vec<usize> = agg.member_indices.iter()
+                .filter(|&&idx| idx < bodies.len())
+                .cloned()
+                .collect();
 
-            // Reduce the rotation effect to prevent jumping
-            let rot_factor = 0.001; // Smaller value for more stable rotation
-            let rot_x = rel_x + (ang_y * rel_z - ang_z * rel_y) * rot_factor;
-            let rot_y = rel_y + (ang_z * rel_x - ang_x * rel_z) * rot_factor;
-            let rot_z = rel_z + (ang_x * rel_y - ang_y * rel_x) * rot_factor;
+            // Update member indices with only valid ones
+            agg.member_indices = valid_indices;
 
-            // Update position
-            bodies[idx].x = com_x + rot_x;
-            bodies[idx].y = com_y + rot_y;
-            bodies[idx].z = com_z + rot_z;
+            // Skip empty agglomerates
+            if agg.member_indices.is_empty() {
+                continue;
+            }
 
-            // Update velocity (includes both translation and rotation component)
-            bodies[idx].vx = vel_x + (ang_y * rel_z - ang_z * rel_y);
-            bodies[idx].vy = vel_y + (ang_z * rel_x - ang_x * rel_z);
-            bodies[idx].vz = vel_z + (ang_x * rel_y - ang_y * rel_x);
+            // Calculate properties
+            for &idx in &agg.member_indices {
+                total_mass += bodies[idx].m;
+                com_x += bodies[idx].x * bodies[idx].m;
+                com_y += bodies[idx].y * bodies[idx].m;
+                com_z += bodies[idx].z * bodies[idx].m;
+                vel_x += bodies[idx].vx * bodies[idx].m;
+                vel_y += bodies[idx].vy * bodies[idx].m;
+                vel_z += bodies[idx].vz * bodies[idx].m;
+            }
+
+            if total_mass > 0.0 {
+                com_x /= total_mass;
+                com_y /= total_mass;
+                com_z /= total_mass;
+                vel_x /= total_mass;
+                vel_y /= total_mass;
+                vel_z /= total_mass;
+            }
+
+            // Update agglomerate properties
+            agg.com = (com_x, com_y, com_z);
+            agg.vel = (vel_x, vel_y, vel_z);
+            agg.total_mass = total_mass;
+
+            // Update particle velocities
+            for &idx in &agg.member_indices {
+                bodies[idx].vx = vel_x;
+                bodies[idx].vy = vel_y;
+                bodies[idx].vz = vel_z;
+            }
         }
     }
+
+    // Clean up empty agglomerates
+    let empty_aggs: Vec<i32> = agglomerates.iter()
+        .filter(|(_, agg)| agg.member_indices.is_empty())
+        .map(|(id, _)| *id)
+        .collect();
+
+    for id in empty_aggs {
+        agglomerates.remove(&id);
+    }
 }
+
 
 pub fn check_escaped_particles(bodies: &mut Vec<Body>, lower: usize, upper: usize) {
     // Calculate total mass of the system
@@ -541,6 +820,144 @@ pub fn calc_direct_force(bodies: &mut Vec<Body>, lower: usize, upper: usize) {
     }
 }
 
+pub fn apply_gas_drag(bodies: &mut Vec<Body>, lower: usize, upper: usize) {
+    // Calculate center of mass of the system
+    let mut total_mass: Real = 0.0;
+    let mut com_x: Real = 0.0;
+    let mut com_y: Real = 0.0;
+    let mut com_z: Real = 0.0;
+
+    for body in bodies.iter() {
+        if !body.escaped {
+            total_mass += body.m;
+            com_x += body.x * body.m;
+            com_y += body.y * body.m;
+            com_z += body.z * body.m;
+        }
+    }
+
+    if total_mass > 0.0 {
+        com_x /= total_mass;
+        com_y /= total_mass;
+        com_z /= total_mass;
+    }
+
+    // Parameters for the gas density profile
+    let base_density: Real = 1.0e-6; // Base gas density
+    let density_scale: Real = 500.0; // How quickly density increases toward center
+    let max_density: Real = 1.0e-4; // Maximum gas density at the center
+    let drag_coefficient: Real = 10000.0; // Strength of drag force
+
+    // Apply drag to each particle
+    for i in lower..upper {
+        if bodies[i].escaped || bodies[i].agglomerate_id >= 0 {
+            continue; // Skip escaped particles and agglomerates
+        }
+
+        // Calculate distance from center of mass
+        let dx = bodies[i].x - com_x;
+        let dy = bodies[i].y - com_y;
+        let dz = bodies[i].z - com_z;
+        let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+        // Calculate gas density at this distance (exponential profile)
+        let density =
+            base_density + (max_density - base_density) * (-distance * density_scale).exp();
+
+        // Calculate gas drag force
+        let speed_squared =
+            bodies[i].vx * bodies[i].vx + bodies[i].vy * bodies[i].vy + bodies[i].vz * bodies[i].vz;
+
+        if speed_squared > 0.0 {
+            let speed = speed_squared.sqrt();
+
+            // Drag force magnitude (proportional to velocity squared and density)
+            let drag_force =
+                drag_coefficient * density * speed_squared * bodies[i].radius * bodies[i].radius;
+
+            // Calculate drag acceleration
+            let drag_factor = drag_force / (bodies[i].m * speed);
+
+            // Apply drag acceleration (opposite to velocity direction)
+            bodies[i].ax -= bodies[i].vx * drag_factor;
+            bodies[i].ay -= bodies[i].vy * drag_factor;
+            bodies[i].az -= bodies[i].vz * drag_factor;
+        }
+    }
+}
+
+/// Apply spring forces between touching particles in the same agglomerate
+/// This keeps particles at their equilibrium distance (2 × radius)
+pub fn apply_spring_forces(bodies: &mut Vec<Body>, lower: usize, upper: usize, spring_constant: Real) {
+    const G: Real = 6.67408e-11;
+
+    for i in lower..upper {
+        if bodies[i].escaped || bodies[i].agglomerate_id < 0 {
+            continue;
+        }
+
+        let agg_id = bodies[i].agglomerate_id;
+
+        for j in (i + 1)..bodies.len() {
+            if bodies[j].agglomerate_id != agg_id || bodies[j].escaped {
+                continue;
+            }
+
+            let dx = bodies[j].x - bodies[i].x;
+            let dy = bodies[j].y - bodies[i].y;
+            let dz = bodies[j].z - bodies[i].z;
+
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            if distance < 1e-10 {
+                continue;
+            }
+
+            let rest_length = bodies[i].radius + bodies[j].radius;
+
+            // Apply spring forces in a wider range to prevent compression
+            let min_threshold = rest_length * 0.5;
+            let max_threshold = rest_length * 2.0;
+
+            if distance < min_threshold || distance > max_threshold {
+                continue;
+            }
+
+            // Calculate gravitational force between these two particles
+            let grav_force = G * bodies[i].m * bodies[j].m / (distance * distance + bodies[i].softening * bodies[j].softening);
+
+            // Calculate spring constant needed to balance gravity at rest_length
+            // We want spring force to be stronger than gravity to prevent compression
+            let adaptive_spring_constant = grav_force / (rest_length * 0.01).max(1e-10); // Balance gravity with 1% displacement
+
+            // Use the larger of user-specified or adaptive spring constant
+            let effective_spring_constant = spring_constant.max(adaptive_spring_constant * 10.0); // 10× stronger to actively resist
+
+            // Hooke's law: F = -k × displacement
+            let displacement = distance - rest_length;
+
+            // Unit direction vector
+            let nx = dx / distance;
+            let ny = dy / distance;
+            let nz = dz / distance;
+
+            // Force magnitude
+            let force_magnitude = -effective_spring_constant * displacement;
+
+            // Apply forces
+            bodies[i].ax += force_magnitude * nx / bodies[i].m;
+            bodies[i].ay += force_magnitude * ny / bodies[i].m;
+            bodies[i].az += force_magnitude * nz / bodies[i].m;
+
+            bodies[j].ax -= force_magnitude * nx / bodies[j].m;
+            bodies[j].ay -= force_magnitude * ny / bodies[j].m;
+            bodies[j].az -= force_magnitude * nz / bodies[j].m;
+        }
+    }
+}
+
+
+
 pub fn leapfrog<C: mpi::traits::Communicator>(
     bodies: &mut Vec<Body>,
     dt: Real,
@@ -565,10 +982,16 @@ pub fn leapfrog<C: mpi::traits::Communicator>(
     }
     calc_direct_force(bodies, lower, upper);
 
+    apply_gas_drag(bodies, lower, upper);
+
+    let spring_constant: Real = 1e-4; // Adjust this value based on your simulation scale
+    apply_spring_forces(bodies, lower, upper, spring_constant);
+
     for bi in bodies.iter_mut().skip(lower).take(upper - lower) {
         bi.vx = bi.vx + bi.ax * dt;
         bi.vy = bi.vy + bi.ay * dt;
         bi.vz = bi.vz + bi.az * dt;
+
         bi.x = bi.x + bi.vx * 0.5 * dt;
         bi.y = bi.y + bi.vy * 0.5 * dt;
         bi.z = bi.z + bi.vz * 0.5 * dt;

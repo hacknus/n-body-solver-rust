@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # Example usage
     pebble_density = 500  # kg/m^3, typical for fluffy pebbles material
     num_pebbles = 1000
-    cloud_radius_km = 1  # 100 km
+    cloud_radius_km = 0.01  # 100 m
     pebble_radius = 0.01  # meter
 
     cloud_radius_m = cloud_radius_km * 1000  # Convert km to m

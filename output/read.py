@@ -21,7 +21,7 @@ def read_binary(path):
     try:
         x = np.fromfile(path, dtype=np.float64)
         # Each particle now has 11 values (including escaped flag)
-        x = x.reshape((x.shape[0] // 11, 11))
+        x = x.reshape((x.shape[0] // 12, 12))
 
         d = {"x": x[:, 0],
              "y": x[:, 1],
@@ -33,7 +33,8 @@ def read_binary(path):
              "ay": x[:, 7],
              "az": x[:, 8],
              "radius": x[:, 9],
-             "escaped": x[:, 10]}
+             "id": x[:, 10],
+             "escaped": x[:, 11]}
         return pd.DataFrame(data=d)
     except Exception as e:
         print(f"Error reading file {path}: {e}")
@@ -46,9 +47,10 @@ j = 0
 while True:
     filepath = os.path.join(output_dir, f'out{j:05d}.dat')
     if not os.path.exists(filepath):
+        print(f"Stopping search at frame {j}, file not found: {filepath}")
         break
     frames.append(j)
-    j += 10  # Using step 10 since files are saved every 10 frames
+    j += 500  # Using step 10 since files are saved every 10 frames
 
 if len(frames) == 0:
     print(f"No output files found in {output_dir}, exiting...")
@@ -75,26 +77,29 @@ ever_escaped = np.zeros(num_particles, dtype=bool)
 
 for df in all_data:
     ever_escaped = ever_escaped | (df["escaped"] > 0.5)
+last = all_data[-1]
+r = last["x"] ** 2 + last["y"] ** 2 + last["z"] ** 2
+ever_escaped |= np.sqrt(r) > 1000
 
 print(f"Total particles: {num_particles}")
 print(f"Particles that never escape: {np.sum(~ever_escaped)}")
 
+
 # Create particle data structure for non-escaped particles
 class Particle:
-    def __init__(self, index, x, y, z, radius):
+    def __init__(self, index, x, y, z, radius, particle_id):
         self.index = index
         self.x = [float(x)]
         self.y = [float(y)]
         self.z = [float(z)]
-        self.radius = float(radius)  # Store radius for better visualization
-        # Determine color based on initial distance from center
-        dist = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-        self.color = dist
+        self.radius = float(radius)
+        self.ids = [int(particle_id)]  # Store ID history
 
-    def add(self, x, y, z):
+    def add(self, x, y, z, particle_id):
         self.x.append(float(x))
         self.y.append(float(y))
         self.z.append(float(z))
+        self.ids.append(int(particle_id))
 
 
 # Get indices of non-escaped particles
@@ -116,15 +121,21 @@ for idx in particle_indices:
         first_frame["x"][idx],
         first_frame["y"][idx],
         first_frame["z"][idx],
-        first_frame["radius"][idx]
+        first_frame["radius"][idx],
+        first_frame["id"][idx]  # Pass the ID
     )
     particles.append(p)
+
 
 # Add positions from remaining frames
 for df in all_data[1:]:
     for particle in particles:
         idx = particle.index
-        particle.add(df["x"][idx], df["y"][idx], df["z"][idx])
+        try:
+            particle.add(df["x"][idx], df["y"][idx], df["z"][idx], df["id"][idx])
+        except Exception as e:
+            break
+            print(f"Error adding data for particle {idx}: {e}")
 
 # Normalize data for better visualization
 # Find overall min/max for plotting
@@ -149,13 +160,28 @@ if ThreeD:
 else:
     ax = fig.add_subplot(111)
 
-# Create a custom colormap based on initial distance from center
-max_color = max(p.color for p in particles)
-min_color = min(p.color for p in particles)
-norm_colors = [(p.color - min_color) / (max_color - min_color) if max_color > min_color else 0.5 for p in particles]
+# Collect all unique IDs across all frames
+all_ids = set()
+for df in all_data:
+    for idx in particle_indices:
+        try:
+            all_ids.add(int(df["id"][idx]))
+        except Exception as e:
+            print(f"Error collecting ID for particle {idx}: {e}")
+            break
 
-cmap = plt.cm.viridis
-colors = [cmap(c) for c in norm_colors]
+unique_ids = sorted(list(all_ids))
+
+print("Unique particle IDs across all frames:", unique_ids)
+print("Number of unique particle IDs:", len(unique_ids))
+num_unique_ids = len(unique_ids)
+
+# Create a color map for IDs
+cmap = plt.cm.tab20 if num_unique_ids <= 20 else plt.cm.hsv
+id_to_color = {id_val: cmap(i / num_unique_ids) for i, id_val in enumerate(unique_ids)}
+
+# Assign initial colors based on first frame particle ID
+colors = [id_to_color[first_frame["id"][idx]] for idx in particle_indices]
 
 # Set up lines and points for animation
 if ThreeD:
@@ -204,6 +230,10 @@ def animate(i):
                     y = particle.y[i]
                     z = particle.z[i] if ThreeD else 0
 
+                    # Update color based on current ID
+                    current_id = particle.ids[i]
+                    pt.set_color(id_to_color.get(current_id, colors[j]))
+
                     xline = particle.x[:i + 1]
                     yline = particle.y[:i + 1]
                     zline = particle.z[:i + 1] if ThreeD else []
@@ -221,6 +251,10 @@ def animate(i):
                     x = particle.x[i]
                     y = particle.y[i]
                     z = particle.z[i] if ThreeD else 0
+
+                    # Update color based on current ID
+                    current_id = particle.ids[i]
+                    pt.set_color(id_to_color.get(current_id, colors[j]))
 
                     pt.set_data([x], [y])
                     if ThreeD:
@@ -254,8 +288,11 @@ mid_z = (max(flat_z) + min(flat_z)) / 2 if ThreeD else 0
 # Set plot properties
 ax.set_xlim(mid_x - max_range - margin, mid_x + max_range + margin)
 ax.set_ylim(mid_y - max_range - margin, mid_y + max_range + margin)
+#ax.set_xlim(-1000, 1000)
+#ax.set_ylim(-1000, 1000)
 if ThreeD:
     ax.set_zlim(mid_z - max_range - margin, mid_z + max_range + margin)
+    #ax.set_zlim(-1000, 1000)
 
 ax.set_xlabel('X (m)')
 ax.set_ylabel('Y (m)')
@@ -264,7 +301,7 @@ if ThreeD:
 ax.set_title('Pebble Cloud Collapse')
 
 # Create animation
-num_frames = min(len(particles[0].x), 200)  # Limit frames for performance
+num_frames = min(len(particles[0].x), 1000000)  # Limit frames for performance
 print(f"Creating animation with {num_frames} frames")
 
 ani = animation.FuncAnimation(

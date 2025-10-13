@@ -83,7 +83,8 @@ fn main() {
 
     for step in 0..steps {
         // dt = get_dt(&bodies, a, b, &world);
-        dt = 60.0 * 60.0 * 24.0 * 1000.0;
+        //dt = 60.0 * 60.0 * 24.0 * 0.01;
+        dt = 60.0 * 60.0 * 24.0 * 0.0005;
         t += dt;
         leapfrog(&mut bodies, dt, a, b, &world);
         // println!("calculating step {} at time t+{:.5}", step, t);
@@ -97,7 +98,7 @@ fn main() {
 
         update_agglomerates(&mut bodies, &mut agglomerates);
 
-        if (rank == 0) && (step % 10 == 0) {
+        if (rank == 0) && (step % 100 == 0) {
             match write_file(&format!("output/out{:0>5}.dat", step), &bodies) {
                 Err(e) => panic!("Problem writing the output file: {:?}", e),
                 Ok(()) => (),
